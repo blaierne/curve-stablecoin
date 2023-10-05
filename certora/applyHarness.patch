@@ -1,0 +1,168 @@
+--- ../contracts/AMM.vy	2023-10-04 11:03:20.970367941 +0300
++++ 	2023-10-05 10:40:04.749441184 +0300
+@@ -47,6 +47,10 @@
+     def callback_collateral_shares(n: int256, collateral_per_share: DynArray[uint256, MAX_TICKS_UINT]): nonpayable
+     def callback_user_shares(user: address, n: int256, user_shares: DynArray[uint256, MAX_TICKS_UINT]): nonpayable
+ 
++interface AMMMath:
++    def _p_oracle_up(n: int256) -> uint256: view
++    def _price_oracle_ro() -> uint256[2]: view
++
+ 
+ event TokenExchange:
+     buyer: indexed(address)
+@@ -125,6 +129,7 @@
+ admin_fees_y: public(uint256)
+ 
+ price_oracle_contract: public(immutable(PriceOracle))
++this_contract: public(address)
+ old_p_o: uint256
+ old_dfee: uint256
+ prev_p_o_time: uint256
+@@ -154,6 +159,7 @@
+         fee: uint256,
+         admin_fee: uint256,
+         _price_oracle_contract: address,
++        _this_contract: address,
+     ):
+     """
+     @notice LLAMMA constructor
+@@ -183,6 +189,7 @@
+     self.fee = fee
+     self.admin_fee = admin_fee
+     price_oracle_contract = PriceOracle(_price_oracle_contract)
++    self.this_contract = _this_contract
+     self.prev_p_o_time = block.timestamp
+     self.old_p_o = price_oracle_contract.price()
+ 
+@@ -283,7 +290,7 @@
+     return [p_new, ratio]
+ 
+ 
+-@internal
++@external
+ @view
+ def _price_oracle_ro() -> uint256[2]:
+     return self.limit_p_o(price_oracle_contract.price())
+@@ -304,7 +311,7 @@
+     """
+     @notice Value returned by the external price oracle contract
+     """
+-    return self._price_oracle_ro()[0]
++    return AMMMath(self.this_contract)._price_oracle_ro()[0]
+ 
+ 
+ @external
+@@ -313,7 +320,7 @@
+     """
+     @notice Dynamic fee which accounts for price_oracle shifts
+     """
+-    return max(self.fee, self._price_oracle_ro()[1])
++    return max(self.fee, AMMMath(self.this_contract)._price_oracle_ro()[1])
+ 
+ 
+ @internal
+@@ -356,7 +363,7 @@
+     return self._base_price()
+ 
+ 
+-@internal
++@external
+ @view
+ def _p_oracle_up(n: int256) -> uint256:
+     """
+@@ -415,10 +422,10 @@
+     """
+     # k = (self.A - 1) / self.A  # equal to (p_down / p_up)
+     # p_base = self.p_base * k ** n = p_oracle_up(n)
+-    p_base: uint256 = self._p_oracle_up(n)
++    p_base: uint256 = AMMMath(self.this_contract)._p_oracle_up(n)
+ 
+     # return self.p_oracle**3 / p_base**2
+-    p_oracle: uint256 = self._price_oracle_ro()[0]
++    p_oracle: uint256 = AMMMath(self.this_contract)._price_oracle_ro()[0]
+     return unsafe_div(p_oracle**2 / p_base * p_oracle, p_base)
+ 
+ 
+@@ -452,7 +459,7 @@
+     @param n Band number (can be negative)
+     @return Price at 1e18 base
+     """
+-    return self._p_oracle_up(n)
++    return AMMMath(self.this_contract)._p_oracle_up(n)
+ 
+ 
+ @external
+@@ -463,7 +470,7 @@
+     @param n Band number (can be negative)
+     @return Price at 1e18 base
+     """
+-    return self._p_oracle_up(n + 1)
++    return AMMMath(self.this_contract)._p_oracle_up(n + 1)
+ 
+ 
+ @internal
+@@ -505,8 +512,8 @@
+     @param y Amount of collateral in band
+     @return Current price at 1e18 base
+     """
+-    p_o_up: uint256 = self._p_oracle_up(n)
+-    p_o: uint256 = self._price_oracle_ro()[0]
++    p_o_up: uint256 = AMMMath(self.this_contract)._p_oracle_up(n)
++    p_o: uint256 = AMMMath(self.this_contract)._price_oracle_ro()[0]
+     assert p_o_up != 0
+ 
+     # Special cases
+@@ -856,7 +863,7 @@
+     max_band: int256 = self.max_band
+     out: DetailedTrade = empty(DetailedTrade)
+     out.n2 = self.active_band
+-    p_o_up: uint256 = self._p_oracle_up(out.n2)
++    p_o_up: uint256 = AMMMath(self.this_contract)._p_oracle_up(out.n2)
+     x: uint256 = self.bands_x[out.n2]
+     y: uint256 = self.bands_y[out.n2]
+ 
+@@ -1007,7 +1014,7 @@
+     if i == 0:
+         in_precision = BORROWED_PRECISION
+         out_precision = COLLATERAL_PRECISION
+-    p_o: uint256[2] = self._price_oracle_ro()
++    p_o: uint256[2] = AMMMath(self.this_contract)._price_oracle_ro()
+     if is_in:
+         out = self.calc_swap_out(i == 0, amount * in_precision, p_o, in_precision, out_precision)
+     else:
+@@ -1155,7 +1162,7 @@
+     max_band: int256 = self.max_band
+     out: DetailedTrade = empty(DetailedTrade)
+     out.n2 = self.active_band
+-    p_o_up: uint256 = self._p_oracle_up(out.n2)
++    p_o_up: uint256 = AMMMath(self.this_contract)._p_oracle_up(out.n2)
+     x: uint256 = self.bands_x[out.n2]
+     y: uint256 = self.bands_y[out.n2]
+ 
+@@ -1358,12 +1365,12 @@
+     ticks: DynArray[uint256, MAX_TICKS_UINT] = self._read_user_ticks(user, ns)
+     if ticks[0] == 0:  # Even dynamic array will have 0th element set here
+         return 0
+-    p_o: uint256 = self._price_oracle_ro()[0]
++    p_o: uint256 = AMMMath(self.this_contract)._price_oracle_ro()[0]
+     assert p_o != 0
+ 
+     n: int256 = ns[0] - 1
+     n_active: int256 = self.active_band
+-    p_o_down: uint256 = self._p_oracle_up(ns[0])
++    p_o_down: uint256 = AMMMath(self.this_contract)._p_oracle_up(ns[0])
+     XY: uint256 = 0
+ 
+     for i in range(MAX_TICKS):
+@@ -1575,8 +1582,8 @@
+     min_band: int256 = self.min_band
+     max_band: int256 = self.max_band
+     n: int256 = self.active_band
+-    p_o: uint256[2] = self._price_oracle_ro()
+-    p_o_up: uint256 = self._p_oracle_up(n)
++    p_o: uint256[2] = AMMMath(self.this_contract)._price_oracle_ro()
++    p_o_up: uint256 = AMMMath(self.this_contract)._p_oracle_up(n)
+     p_down: uint256 = unsafe_div(unsafe_div(p_o[0]**2, p_o_up) * p_o[0], p_o_up)  # p_current_down
+     p_up: uint256 = unsafe_div(p_down * A2, Aminus12)  # p_crurrent_up
+     amount: uint256 = 0
