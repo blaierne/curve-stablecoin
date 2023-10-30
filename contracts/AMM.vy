@@ -102,7 +102,7 @@ BORROWED_PRECISION: immutable(uint256)
 COLLATERAL_TOKEN: immutable(ERC20)  # y
 COLLATERAL_PRECISION: immutable(uint256)
 BASE_PRICE: immutable(uint256)
-admin: public(address)
+admin: public(address) # controller
 
 A: public(immutable(uint256))
 Aminus1: immutable(uint256)
@@ -1704,6 +1704,7 @@ def set_admin_fee(fee: uint256):
     log SetAdminFee(fee)
 
 
+# ! not needed reentrancy locks
 @external
 @nonreentrant('lock')
 def reset_admin_fees():

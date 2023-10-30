@@ -219,6 +219,7 @@ def __default__():
     assert len(msg.data) == 0
 
 
+# ! QA - no underscore for internal function
 @internal
 @pure
 def log2(_x: uint256) -> int256:
@@ -354,6 +355,7 @@ def total_debt() -> uint256:
     return loan.initial_debt * rate_mul / loan.rate_mul
 
 
+# ! QA - no underscore for internal function
 @internal
 @view
 def get_y_effective(collateral: uint256, N: uint256, discount: uint256) -> uint256:
@@ -657,16 +659,19 @@ def _add_collateral_borrow(d_collateral: uint256, d_debt: uint256, _for: address
     rate_mul: uint256 = 0
     debt, rate_mul = self._debt(_for)
     assert debt > 0, "Loan doesn't exist"
+
     debt += d_debt
     ns: int256[2] = AMM.read_user_tick_numbers(_for)
     size: uint256 = convert(unsafe_add(unsafe_sub(ns[1], ns[0]), 1), uint256)
 
     xy: uint256[2] = AMM.withdraw(_for, 10**18)
     assert xy[0] == 0, "Already in underwater mode"
+
     if remove_collateral:
         xy[1] -= d_collateral
     else:
         xy[1] += d_collateral
+
     n1: int256 = self._calculate_debt_n1(xy[1], debt, size)
     n2: int256 = n1 + unsafe_sub(ns[1], ns[0])
 

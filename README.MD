@@ -1,44 +1,66 @@
-# Curve Stablecoin contracts
+## Foundry
 
-## Install dependencies using poetry
+**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
 
-Installing poetry and all dependencies for tests
+Foundry consists of:
 
-```shell
-pip install poetry==1.4.1
-poetry install
-```
+-   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
+-   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
+-   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
+-   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
 
-Installing specific dependency groups (main/dev(tests)/ape(deploy))
+## Documentation
 
-```shell
-poetry install --without dev,ape
-```
+https://book.getfoundry.sh/
 
-Updating dependencies
+## Usage
 
-```shell
-poetry add vyper
-poetry add "vyper>=0.3.7,<0.4"
-poetry add --group dev "git+https://github.com/vyperlang/titanoboa.git@6ffcfa724023fb2b9f8ed02221c8bcbf4511712c"
-```
-
-Removing dependencies
+### Build
 
 ```shell
-poetry remove ape-alchemy --group ape
+$ forge build
 ```
 
-## Environment for forked tests
-
-Install env for forked tests
+### Test
 
 ```shell
-cd deploy_env
-poetry install --sync
-cd -
+$ forge test
 ```
 
-Put settings file ("_.env_") into [parent](.) directory.
-[Example](./.env-example) defines all required parameters, mainly
-external web3 provider.
+### Format
+
+```shell
+$ forge fmt
+```
+
+### Gas Snapshots
+
+```shell
+$ forge snapshot
+```
+
+### Anvil
+
+```shell
+$ anvil
+```
+
+### Deploy
+
+```shell
+$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+```
+
+### Cast
+
+```shell
+$ cast <subcommand>
+```
+
+### Help
+
+```shell
+$ forge --help
+$ anvil --help
+$ cast --help
+```

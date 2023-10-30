@@ -1,0 +1,66 @@
+Stablecoin USDC pool,   0x4DEcE678ceceb27446b35C672dC7d61F30bAD69E
+Stablecoin USDT pool,   0x390f3595bCa2Df7d23783dFd126427CCeb997BF4
+Stablecoin USDP pool,   0xCa978A0528116DDA3cbA9ACD3e68bc6191CA53D0
+Stablecoin TUSD pool,   0x34D655069F4cAc1547E4C8cA284FfFF5ad4A8db0
+
+# System
+Stablecoin,	                crvUSD Token,	                            0xf939E0A03FB07F59A73314E73794Be0E57ac1b4E
+Factory,	                Factory contract for crvUSD markets,	    0xC9332fdCB1C491Dcc683bAe86Fe3cb70360738BC
+Controller Implementation,	Blueprint for Controller,	               0xCdb55051fC792303DdC7c1052cC5161BaeD88e2A
+AMM Implementation,	        Blueprint for AMM,	                       0x23208cA4F2B30d8f7D54bf2D5A822D1a2F876501
+Swap factory,	            Pool Factory,	                           0x4F8846Ae9380B90d2E71D5e3D042dff3E7ebb40d
+Owner proxy,	            Owner of Factory and it's deployed pools,	0x855cC906dA8271Dd53879929bd226711247D5f17
+PriceAggregator,	        Aggregator of stablecoin prices for crvUSD,	0xe5Afcf332a5457E8FafCD668BcE3dF953762Dfe7
+PriceAggregatorV2,	        Aggregator of stablecoin prices for crvUSD,	 0x18672b1b0c623a30089A280Ed9256379fb0E4E62
+PegKeeper (USDC),	        PegKepper for crvUSD/USDC,	0xaA346781dDD7009caa644A4980f044C50cD2ae22
+PegKeeper (USDT),	        PegKepper for crvUSD/USDT,	0xE7cd2b4EB1d98CD6a4A48B6071D46401Ac7DC5C8
+PegKeeper (USDP),	        PegKepper for crvUSD/USDP,	0x6B765d07cf966c745B340AdCa67749fE75B5c345
+PegKeeper (TUSD),	        PegKepper for crvUSD/TUSD,	0x1ef89Ed0eDd93D1EC09E4c07373f69C49f4dcCae
+
+# sfrxETH
+AMM,	                    0x136e783846ef68c8bd00a3369f787df8d683a696
+Controller,	                0x8472a9a7632b173c8cf3a86d3afec50c35548e76
+MonetaryPolicy,	            0xc684432FD6322c6D58b6bC5d28B18569aA0AD0A1
+CollateralToken (sfrxETH),	0xac3e018457b222d93114458476f3e3416abbe38f
+PriceOracle,	            0x19F5B81e5325F882C9853B5585f74f751DE3896d
+Leverage Zap,	            0xb556FA4C4752321B3154f08DfBDFCF34847f2eac
+
+# wstETH
+AMM,	                    0x37417b2238aa52d0dd2d6252d989e728e8f706e4
+Controller,	                0x100daa78fc509db39ef7d04de0c1abd299f4c6ce
+MonetaryPolicy,	            0x1E7d3bf98d3f8D8CE193236c3e0eC4b00e32DaaE
+CollateralToken (wstETH),	0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0
+PriceOracle,	            0xc1793A29609ffFF81f10139fa0A7A444c9e106Ad
+Leverage Zap,	            0x293436d4e4a15FBc6cCC400c14a01735E5FC74fd
+
+# wBTC
+AMM,	                    0xe0438eb3703bf871e31ce639bd351109c88666ea
+Controller,	                0x4e59541306910ad6dc1dac0ac9dfb29bd9f15c67
+MonetaryPolicy,	            0x1E7d3bf98d3f8D8CE193236c3e0eC4b00e32DaaE
+CollateralToken (wBTC),	    0x2260fac5e5542a773aa44fbcfedf7c193bc2c599
+PriceOracle,	            0xBe83fD842DB4937C0C3d15B2aBA6AF7E854f8dcb
+Leverage Zap,	            0xA2518b71ee64E910741f5Cf480b19E8e402de4d7
+
+# ETH
+AMM,	                    0x1681195c176239ac5e72d9aebacf5b2492e0c4ee
+Controller,	                0xa920de414ea4ab66b97da1bfe9e6eca7d4219635
+MonetaryPolicy,	            0x1E7d3bf98d3f8D8CE193236c3e0eC4b00e32DaaE
+CollateralToken (wETH),	    0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
+PriceOracle,	            0x966cBDeceFB60A289b0460F7638f4A75F432cA06
+Leverage Zap,	            0xd3e576B5DcDe3580420A5Ef78F3639BA9cd1B967
+
+# sfrxETHv2
+AMM,	                    0xfa96ad0a9e64261db86950e2da362f5572c5c6fd
+Controller,	                0xec0820efafc41d8943ee8de495fc9ba8495b15cf
+MonetaryPolicy,	            0xb8687d7dc9d8fa32fabde63e19b2dbc9bb8b2138
+CollateralToken (sfrxETH),	0xac3e018457b222d93114458476f3e3416abbe38f
+PriceOracle,	            0x28d7880B5b67fB4a0B1c6Ed6c33c33f365113C29
+Leverage Zap,	            0x43eCFfe6c6C1b9F24AeB5C180E659c2a6FCe11Bc
+
+# tBTC
+AMM,	                    0xf9bd9da2427a50908c4c6d1599d8e62837c2bcb0
+Controller,	                0x1c91da0223c763d2e0173243eadaa0a2ea47e704
+MonetaryPolicy,	            0xb8687d7dc9d8fa32fabde63e19b2dbc9bb8b2138
+CollateralToken (tBTC),	    0x18084fba666a33d37592fa2633fd49a74dd93a88
+PriceOracle,	            0xbeF434E2aCF0FBaD1f0579d2376fED0d1CfC4217
+Leverage Zap,	            0xD79964C70Cb06224FdA4c48387B53E9819bcB71c
