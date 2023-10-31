@@ -1,3 +1,5 @@
+.github
+out
 /build
 *.pyc
 /node_modules
