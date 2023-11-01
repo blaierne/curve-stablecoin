@@ -1,10 +1,7 @@
 methods {
     function totalSupply() external returns uint256 envfree;
     function minter() external returns address envfree;
-//    function _.ext_p_oracle_up(int256) external => NONDET;
 }
-
-//ghost p_oracle_summary(int256) returns uint256;
 
 ghost mathint sum_of_balances {
     init_state axiom sum_of_balances == 0;
