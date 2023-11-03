@@ -166,6 +166,7 @@ DEAD_SHARES: constant(uint256) = 1000
 
 MAX_ETH_GAS: constant(uint256) = 10000  # Forward this much gas to ETH transfers (2300 is what send() does)
 
+log2_summary: public(HashMap[uint256, int256])
 
 @external
 def __init__(
@@ -220,37 +221,38 @@ def __default__():
 
 
 @internal
-@pure
+@view
 def log2(_x: uint256) -> int256:
     """
     @notice int(1e18 * log2(_x / 1e18))
     """
+    return self.log2_summary[_x]
     # adapted from: https://medium.com/coinmonks/9aef8515136e
     # and vyper log implementation
     # Might use more optimal solmate's log
-    inverse: bool = _x < 10**18
-    res: uint256 = 0
-    x: uint256 = _x
-    if inverse:
-        x = 10**36 / x
-    t: uint256 = 2**7
-    for i in range(8):
-        p: uint256 = pow_mod256(2, t)
-        if x >= unsafe_mul(p, 10**18):
-            x = unsafe_div(x, p)
-            res = unsafe_add(unsafe_mul(t, 10**18), res)
-        t = unsafe_div(t, 2)
-    d: uint256 = 10**18
-    for i in range(34):  # 10 decimals: math.log(10**10, 2) == 33.2. Need more?
-        if (x >= 2 * 10**18):
-            res = unsafe_add(res, d)
-            x = unsafe_div(x, 2)
-        x = unsafe_div(unsafe_mul(x, x), 10**18)
-        d = unsafe_div(d, 2)
-    if inverse:
-        return -convert(res, int256)
-    else:
-        return convert(res, int256)
+    #inverse: bool = _x < 10**18
+    #res: uint256 = 0
+    #x: uint256 = _x
+    #if inverse:
+    #    x = 10**36 / x
+    #t: uint256 = 2**7
+    #for i in range(8):
+    #    p: uint256 = pow_mod256(2, t)
+    #    if x >= unsafe_mul(p, 10**18):
+    #        x = unsafe_div(x, p)
+    #        res = unsafe_add(unsafe_mul(t, 10**18), res)
+    #    t = unsafe_div(t, 2)
+    #d: uint256 = 10**18
+    #for i in range(34):  # 10 decimals: math.log(10**10, 2) == 33.2. Need more?
+    #    if (x >= 2 * 10**18):
+    #        res = unsafe_add(res, d)
+    #        x = unsafe_div(x, 2)
+    #    x = unsafe_div(unsafe_mul(x, x), 10**18)
+    #    d = unsafe_div(d, 2)
+    #if inverse:
+    #    return -convert(res, int256)
+    #else:
+    #    return convert(res, int256)
 
 
 @external
