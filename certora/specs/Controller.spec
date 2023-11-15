@@ -1,11 +1,11 @@
 methods {
     // view: 
-    function factory() returns (address) external envfree;
-    function amm() returns (address) external envfree;
-    function collateral_token() returns (address) external envfree;
-    function debt(address) returns (uint256) external envfree;
-    function loan_exists(address) returns (bool) external envfree;
-    function total_debt() returns (uint256) external envfree;
+    function factory() external returns (address) envfree;
+    function amm() external returns (address) envfree;
+    function collateral_token() external returns (address) envfree;
+    function debt(address) external returns (uint256) envfree;
+    function loan_exists(address) external returns (bool) envfree;
+    function total_debt() external returns (uint256) envfree;
     function max_borrowable(uint256, uint256, uint256) external returns (uint256) envfree;
     function calculate_debt_n1(uint256, uint256, uint256) external returns (int256) envfree;
     

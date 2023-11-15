@@ -4,4 +4,7 @@ certoraRun contracts/Controller.vy \
     --optimistic_loop \
     --process evm \
     --wait_for_results \
-    --msg "Controller" 
+    --msg "Controller" --server production --coverage_info basic --debug --prover_version mike/CERT-3866-vyper-parse
+
+
+# certoraRun.py certora/configs/Sanity-Controller.conf --debug --server production --coverage_info basic --prover_version mike/CERT-3866-vyper-parse --loop_iter 5
