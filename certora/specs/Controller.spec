@@ -1,3 +1,8 @@
+using Stablecoin as stablecoin;
+using AMM as amm;
+using FactoryMock as factory;
+using WETH as weth;
+
 methods {
     // view: 
     function factory() external returns (address) envfree;
@@ -10,7 +15,7 @@ methods {
     function calculate_debt_n1(uint256, uint256, uint256) external returns (int256) envfree;
     
     function create_loan(uint256, uint256, uint256) external; // payable nonreentrant
-    // function def create_loan_extended(uint256, uint256, uint256, address, DynArray[uint256,5]) external; // payable nonreentrant
+    // function function create_loan_extended(uint256, uint256, uint256, address, DynArray[uint256,5]) external; // payable nonreentrant
     function add_collateral(uint256, address) external; // payable nonreentrant
     function remove_collateral(uint256, bool) external; // nonreentrant
     function borrow_more(uint256, uint256) external; // payable nonreentrant
@@ -31,6 +36,66 @@ methods {
     function set_callback(address) external;
     function admin_fees() external returns (uint256) envfree;
     function collect_fees() external returns (uint256) envfree;
+
+    // AMM:
+    function AMM.A() external returns (uint256);
+    function AMM.get_p() external returns (uint256);
+    function AMM.get_base_price() external returns (uint256);
+    function AMM.active_band() external returns (int256);
+    function AMM.active_band_with_skip() external returns (int256);
+    function AMM.p_oracle_up(int256) external returns (uint256);
+    function AMM.p_oracle_down(int256) external returns (uint256);
+    function AMM.deposit_range(address, uint256, int256, int256) external;
+    function AMM.read_user_tick_numbers(address) external returns (int256[2]);
+    function AMM.get_sum_xy(address) external returns (uint256[2]);
+    function AMM.withdraw(address, uint256) external returns (uint256[2]); // nonpayable
+    function AMM.get_x_down(address) external returns (uint256);
+    function AMM.get_rate_mul() external returns (uint256);
+    function AMM.set_rate(uint256) external returns (uint256); // nonpayable
+    function AMM.set_fee(uint256) external; // nonpayable
+    function AMM.set_admin_fee(uint256) external; // nonpayable
+    function AMM.price_oracle() external returns (uint256);
+    function AMM.can_skip_bands(int256) external returns (bool);
+    // function set_price_oracle(PriceOracle) external; // nonpayable
+    function AMM.admin_fees_x() external returns (uint256);
+    function AMM.admin_fees_y() external returns (uint256);
+    function AMM.reset_admin_fees() external; // nonpayable
+    function AMM.has_liquidity(address) external returns (bool);
+    function AMM.bands_x(int256) external returns (uint256);
+    function AMM.bands_y(int256) external returns (uint256);
+    function AMM.set_callback(address) external; // nonpayable
+
+    // STABLECOIN:
+
+    // WETH:
+
+    // Factory:
+    function FactoryMock.stablecoin() external returns address envfree => getStablecoin();
+    function FactoryMock.admin() external returns address envfree => getFactoryAdmin();
+    function FactoryMock.fee_receiver() external returns address envfree => getFeeReceiver();
+    function FactoryMock.WETH() external returns address envfree => getWeth();
+
+    // MonetaryPolicy:
+    function _.rate_write() external => NONDET;
+}
+
+ghost address factoryAdmin;
+ghost address feeReceiver;
+
+function getFactoryAdmin() returns address {
+    return factoryAdmin;
+}
+
+function getFeeReceiver() returns address {
+    return feeReceiver;
+}
+
+function getStablecoin() returns address {
+    return stablecoin;
+}
+
+function getWeth() returns address {
+    return weth;
 }
 
 rule sanity(method f) {
