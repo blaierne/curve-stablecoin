@@ -98,9 +98,9 @@ struct DetailedTrade:
 
 
 BORROWED_TOKEN: immutable(ERC20)    # x
-BORROWED_PRECISION: immutable(uint256)
+BORROWED_PRECISION: public(immutable(uint256))
 COLLATERAL_TOKEN: immutable(ERC20)  # y
-COLLATERAL_PRECISION: immutable(uint256)
+COLLATERAL_PRECISION: public(immutable(uint256))
 BASE_PRICE: immutable(uint256)
 admin: public(address)
 
@@ -136,7 +136,7 @@ bands_y: public(HashMap[int256, uint256])
 
 exp_summary: public(HashMap[int256, uint256])
 
-total_shares: HashMap[int256, uint256]
+total_shares: public(HashMap[int256, uint256])
 user_shares: HashMap[address, UserTicks]
 DEAD_SHARES: constant(uint256) = 1000
 
