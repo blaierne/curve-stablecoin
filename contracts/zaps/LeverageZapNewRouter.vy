@@ -13,8 +13,8 @@ interface ERC20:
     def decimals() -> uint256: view
 
 interface Router:
-    def exchange_multiple(_route: address[9], _swap_params: uint256[3][4], _amount: uint256, _expected: uint256, _pools: address[4]) -> uint256: payable
-    def get_exchange_multiple_amount(_route: address[9], _swap_params: uint256[3][4], _amount: uint256, _pools: address[4]) -> uint256: view
+    def exchange(_route: address[11], _swap_params: uint256[5][5], _amount: uint256, _expected: uint256, _pools: address[5]) -> uint256: payable
+    def get_dy(_route: address[11], _swap_params: uint256[5][5], _amount: uint256, _pools: address[5]) -> uint256: view
 
 interface Controller:
     def loan_discount() -> uint256: view
@@ -47,11 +47,11 @@ LOG2_A_RATIO: immutable(int256)  # log(A / (A - 1))
 SQRT_BAND_RATIO: immutable(uint256)
 COLLATERAL_PRECISION: immutable(uint256)
 
-routes: public(HashMap[uint256, address[9]])
-route_params: public(HashMap[uint256, uint256[3][4]])
-route_pools: public(HashMap[uint256, address[4]])
-route_names: public(HashMap[uint256, String[64]])
-routes_count: public(uint256)
+routes: public(HashMap[uint256, address[11]])
+route_params: public(HashMap[uint256, uint256[5][5]])
+route_pools: public(HashMap[uint256, address[5]])
+route_names: public(HashMap[uint256, String[100]])
+routes_count: public(constant(uint256)) = 5
 
 
 @external
@@ -59,10 +59,10 @@ def __init__(
         _controller: address,
         _collateral: address,
         _router: address,
-        _routes: DynArray[address[9], 20],
-        _route_params: DynArray[uint256[3][4], 20],
-        _route_pools: DynArray[address[4], 20],
-        _route_names: DynArray[String[64], 20],
+        _routes: DynArray[address[11], 5],
+        _route_params: DynArray[uint256[5][5], 5],
+        _route_pools: DynArray[address[5], 5],
+        _route_names: DynArray[String[100], 5],
 ):
     CONTROLLER = _controller
     ROUTER = Router(_router)
@@ -76,14 +76,13 @@ def __init__(
     SQRT_BAND_RATIO = isqrt(unsafe_div(10 ** 36 * _A, unsafe_sub(_A, 1)))
     COLLATERAL_PRECISION = pow_mod256(10, 18 - ERC20(_collateral).decimals())
 
-    for i in range(20):
+    for i in range(5):
         if i >= len(_routes):
             break
         self.routes[i] = _routes[i]
         self.route_params[i] = _route_params[i]
         self.route_pools[i] = _route_pools[i]
         self.route_names[i] = _route_names[i]
-    self.routes_count = len(_routes)
 
     ERC20(CRVUSD).approve(_router, max_value(uint256), default_return_value=True)
     ERC20(_collateral).approve(_controller, max_value(uint256), default_return_value=True)
@@ -179,7 +178,7 @@ def _max_p_base() -> uint256:
 @view
 @internal
 def _get_collateral(stablecoin: uint256, route_idx: uint256) -> uint256:
-    return ROUTER.get_exchange_multiple_amount(self.routes[route_idx], self.route_params[route_idx], stablecoin, self.route_pools[route_idx])
+    return ROUTER.get_dy(self.routes[route_idx], self.route_params[route_idx], stablecoin, self.route_pools[route_idx])
 
 
 @view
@@ -324,6 +323,6 @@ def callback_deposit(user: address, stablecoins: uint256, collateral: uint256, d
 
     route_idx: uint256 = callback_args[0]
     min_recv: uint256 = callback_args[1]
-    leverage_collateral: uint256 = ROUTER.exchange_multiple(self.routes[route_idx], self.route_params[route_idx], debt, min_recv, self.route_pools[route_idx])
+    leverage_collateral: uint256 = ROUTER.exchange(self.routes[route_idx], self.route_params[route_idx], debt, min_recv, self.route_pools[route_idx])
 
     return [0, leverage_collateral]
