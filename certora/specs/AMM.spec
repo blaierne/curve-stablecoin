@@ -1,5 +1,4 @@
 methods {
-//    function _.ext_p_oracle_up(int256) external => NONDET;
     function total_shares(int256) external returns uint256 envfree;
     function admin() external returns address envfree;
     function BORROWED_PRECISION() external returns uint256 envfree;
@@ -7,22 +6,6 @@ methods {
     function active_band() external returns int256 envfree;
     function bands_x(int256 n) external returns uint256 envfree;
     function bands_y(int256 n) external returns uint256 envfree;
-
-function approve_max(address, address) external; //approve_max(ERC20, address) internal;
-function set_admin(address) external;
-function sqrt_int(uint256) external returns(uint256) envfree;
-function coins(uint256) external returns(address) envfree;
-function limit_p_o(uint256) internal returns (uint256[2]);
-function _price_oracle_ro() internal returns (uint256[2]);
-function _price_oracle_w() internal returns (uint256[2]);
-function price_oracle() external returns (uint256) envfree;
-function dynamic_fee() external returns (uint256) envfree;
-function _rate_mul() internal returns (uint256) envfree;
-function get_rate_mul() external returns (uint256) envfree;
-function _base_price() internal returns (uint256) envfree;
-function get_base_price() external returns (uint256) envfree;
-function _p_oracle_up(int256) internal returns (uint256) envfree;
-function _p_current_band(int256) internal returns (uint256) envfree;
 }
 
 ghost mapping(address => int256) user_n1;
@@ -31,7 +14,7 @@ ghost mapping(address => mapping(mathint => uint256)) user_ticks_unpacked {
     init_state axiom (forall address user. forall mathint n. user_ticks_unpacked[user][n] == 0);
 }
 ghost mapping(address => mapping(mathint => bool)) user_ticks_valid {
-    init_state axiom (forall address user. forall mathint n. user_ticks_valid[user][n] == true);
+    init_state axiom (forall address user. forall mathint n. user_ticks_valid[user][n] == false);
 }
 ghost mapping(mathint => mathint) total_shares_ghost {
     init_state axiom (forall mathint n. total_shares_ghost[n] == 0);
@@ -83,7 +66,7 @@ hook Sstore user_shares[KEY address user].ticks[INDEX uint256 index] uint256 new
         havoc user_ticks_unpacked assuming
             forall address u. forall mathint n. user_ticks_unpacked@new[u][n] == (u == user ? 0 : user_ticks_unpacked@old[u][n]);
         havoc user_ticks_valid assuming
-            forall address u. forall mathint n. !user_ticks_valid@new[u][n];
+            forall address u. forall mathint n. user_ticks_valid@new[u][n] == (u == user ? false : user_ticks_valid@old[u][n]);
     } else {
         mathint basetick = user_n1[user] + 2 * index;
         user_ticks_valid[user][index] = true;
@@ -99,7 +82,8 @@ hook Sstore user_shares[KEY address user].ticks[INDEX uint256 index] uint256 new
 hook Sload uint256 packed user_shares[KEY address user].ticks[INDEX uint256 index] STORAGE {
     if (user_ticks_valid[user][index]) {
         mathint basetick = user_n1[user] + 2*index;
-        require to_mathint(packed) == user_ticks_unpacked[user][basetick + 0] + 2^128 * user_ticks_unpacked[user][basetick + 1];
+        require to_mathint(user_ticks_unpacked[user][basetick + 0]) == packed % 2^128;
+        require to_mathint(user_ticks_unpacked[user][basetick + 1]) == packed / 2^128;
     } else if (index == 0) {
         require to_mathint(packed) == 0;
     }
@@ -115,8 +99,7 @@ invariant total_shares_match(int256 n)
 }
 
 invariant zero_is_invalid()
-    (forall address user. user_ticks_unpacked[user][user_n1[user]] == 0 && user_ticks_unpacked[user][user_n1[user] + 1] == 0 =>
-       !user_ticks_valid[user][0]);
+    (forall address user. user_ticks_unpacked[user][user_n1[user]] == 0 => !user_ticks_valid[user][0]);
 
 invariant invalid_are_zero()
     forall address user. forall mathint index.
@@ -153,7 +136,7 @@ rule withdraw_removes_from_bands(address user, uint256 frac) {
     env e;
     require BORROWED_PRECISION() != 0;
     // work around for bug in AMM.vy
-    //require BORROWED_PRECISION() == 1;
+    require BORROWED_PRECISION() == 1;
     require COLLATERAL_PRECISION() != 0;
     mathint total_x_before = total_x;
     mathint total_y_before = total_y;
@@ -166,4 +149,39 @@ rule withdraw_removes_from_bands(address user, uint256 frac) {
     mathint removed_y = total_y_before - total_y;
     assert amount_x * BORROWED_PRECISION() <= removed_x && removed_x < (amount_x+2) * BORROWED_PRECISION();
     assert amount_y * COLLATERAL_PRECISION() <= removed_y && removed_y < (amount_y+2) * COLLATERAL_PRECISION();
+}
+
+rule withdraw_all_user_shares(address user) {
+    requireInvariant invalid_are_zero();
+
+    env e;
+    uint256[2] amounts;
+    bool valid_before = user_ticks_valid[user][0];
+    amounts = withdraw(e, user, 10^18);
+    bool valid_after = user_ticks_valid[user][0];
+    assert valid_before && !valid_after;
+}
+
+rule withdraw_some_user_shares(address user) {
+    requireInvariant invalid_are_zero();
+
+    env e;
+    uint256 frac;
+    uint256[2] amounts;
+    bool valid_before = user_ticks_valid[user][0];
+    require frac != 10^18;
+    amounts = withdraw(e, user, frac);
+    bool valid_after = user_ticks_valid[user][0];
+    assert valid_before && valid_after;
+}
+
+rule deposit_some_user_shares(address user, uint256 amount, int256 n1, int256 n2) {
+    requireInvariant zero_is_invalid();
+    require n1 < n2;
+
+    env e;
+    bool valid_before = user_ticks_valid[user][0];
+    deposit_range(e, user, amount, n1, n2);
+    bool valid_after = user_ticks_valid[user][0];
+    assert !valid_before && valid_after;
 }
