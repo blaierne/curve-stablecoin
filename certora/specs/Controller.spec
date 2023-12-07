@@ -194,16 +194,23 @@ rule integrityOfRepay(uint256 debtToRepay, address _for, int256 max_active_band,
     // require use_eth == false;
     mathint debtBefore = get_initial_debt(_for);
     mathint stablecoinBalanceBefore = stablecoin.balanceOf(e.msg.sender);
+    mathint redeemedBefore = redeemed();
 
     repay(e, debtToRepay, _for, max_active_band, use_eth);
 
     mathint debtAfter = get_initial_debt(_for);
     mathint stablecoinBalanceAfter = stablecoin.balanceOf(e.msg.sender);
+    mathint redeemedAfter = redeemed();
 
-    assert (debtBefore >= to_mathint(debtToRepay)) => debtAfter == debtBefore - debtToRepay;
-    assert (debtBefore < to_mathint(debtToRepay)) => debtAfter == 0;
-    assert (debtBefore >= to_mathint(debtToRepay)) => stablecoinBalanceAfter == stablecoinBalanceBefore - debtToRepay;
-    assert (debtBefore < to_mathint(debtToRepay)) => stablecoinBalanceAfter == stablecoinBalanceBefore - debtBefore;
+    if (debtBefore >= to_mathint(debtToRepay)) {
+        assert debtAfter == debtBefore - debtToRepay;
+        assert stablecoinBalanceAfter == stablecoinBalanceBefore - debtToRepay;
+        assert redeemedAfter == redeemedBefore + debtToRepay;
+    } else {
+        assert debtAfter == 0;
+        assert stablecoinBalanceAfter == stablecoinBalanceBefore - debtBefore;
+        assert redeemedAfter == redeemedBefore + debtBefore;
+    }
 }
 
 rule integrityOfAddCollateral(uint256 collateral, address _for) {
