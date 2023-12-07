@@ -1,4 +1,5 @@
 using Stablecoin as stablecoin;
+using CollateralToken as collateraltoken;
 using AMM as amm;
 using FactoryMock as factory;
 using WETH as weth;
@@ -37,6 +38,14 @@ methods {
     function admin_fees() external returns (uint256) envfree;
     function collect_fees() external returns (uint256) envfree;
 
+    // Controller Getters:
+    function minted() external returns (uint256) envfree;
+    function redeemed() external returns (uint256) envfree;
+
+    // ControllerHarness:
+    function get_initial_debt(address) external returns (uint256) envfree;
+    function get_rate_mul(address) external returns (uint256) envfree;
+
     // AMM:
     function AMM.A() external returns (uint256);
     function AMM.get_p() external returns (uint256);
@@ -66,6 +75,12 @@ methods {
     function AMM.set_callback(address) external; // nonpayable
 
     // STABLECOIN:
+    function Stablecoin.balanceOf(address) external returns (uint256) envfree;
+    function Stablecoin.totalSupply() external returns (uint256) envfree;
+
+    // STABLECOIN:
+    function CollateralToken.balanceOf(address) external returns (uint256);
+    function CollateralToken.totalSupply() external returns (uint256);
 
     // WETH:
 
@@ -81,6 +96,32 @@ methods {
 
 ghost address factoryAdmin;
 ghost address feeReceiver;
+ghost mathint sumAllDebt;
+
+// ghost mapping(address => uint256) loansInitialDebt {
+//     init_state axiom forall address user . loansInitialDebt[user] == 0;
+// }
+
+// ghost mapping(address => uint256) loansRateMul {
+//     init_state axiom forall address user . loansRateMul[user] == 0;
+// }
+
+// hook Sstore loan[KEY address user].initial_debt uint256 newInitialDebt (uint256 oldInitialDebt) STORAGE {
+//     sumAllDebt = sumAllDebt - oldInitialDebt + newInitialDebt;
+//     loansInitialDebt[user] = newInitialDebt;
+// }
+
+// hook Sload uint256 initialDebt loan[KEY address user].initial_debt STORAGE {
+//     require  loansInitialDebt[user] == initialDebt;
+// }
+
+// hook Sstore loan[KEY address user].rate_mul uint256 newRateMul (uint256 oldRateMul) STORAGE {
+//     loansRateMul[user] = newRateMul;
+// }
+
+// hook Sload uint256 newRateMul loan[KEY address user].rate_mul STORAGE {
+//     require  loansRateMul[user] == newRateMul;
+// }
 
 function getFactoryAdmin() returns address {
     return factoryAdmin;
@@ -98,11 +139,67 @@ function getWeth() returns address {
     return weth;
 }
 
-rule sanity(method f) {
-    env e; 
-    calldataarg args;
+// invariant totalDebtEqSumAllDebts()
+//     to_mathint(total_debt()) == sumAllDebt;
 
-    f(e, args);
 
-    assert false;
+rule integrityOfCreateLoan(uint256 collateralAmaount, uint256 debt, uint256 N) {
+    env e;
+    mathint wethAmount = e.msg.value;
+    bool loanExsitBefore = loan_exists(e.msg.sender);
+    mathint mintedBefore = minted();
+    mathint stablecoinBalanceBefore = stablecoin.balanceOf(e.msg.sender);
+
+    create_loan(e, collateralAmaount, debt, N);
+
+    bool loanExsitAfter = loan_exists(e.msg.sender);
+    uint256 initialDebt = get_initial_debt(e.msg.sender);
+    mathint mintedAfter = minted();
+    mathint stablecoinBalanceAfter = stablecoin.balanceOf(e.msg.sender);
+
+    assert !loanExsitBefore && loanExsitAfter;
+    assert debt == initialDebt;
+    assert mintedAfter == mintedBefore + debt;
+    assert stablecoinBalanceAfter == stablecoinBalanceBefore + debt;
 }
+
+rule integrityOfRepayLoan(uint256 debtToRepay, address _for, int256 max_active_band, bool use_eth) {
+    env e;
+    require use_eth == false;
+    mathint debtBefore = get_initial_debt(_for);
+    mathint stablecoinBalanceBefore = stablecoin.balanceOf(e.msg.sender);
+
+    repay(e, debtToRepay, _for, max_active_band, use_eth);
+
+    mathint debtAfter = get_initial_debt(_for);
+    mathint stablecoinBalanceAfter = stablecoin.balanceOf(e.msg.sender);
+
+    // assert (debtBefore >= to_mathint(debtToRepay)) => debtAfter == debtBefore - debtToRepay;
+    assert (debtBefore < to_mathint(debtToRepay)) => debtAfter == 0;
+    // assert (debtBefore >= to_mathint(debtToRepay)) => stablecoinBalanceAfter == stablecoinBalanceBefore - debtToRepay;
+    // assert (debtBefore < to_mathint(debtToRepay)) => stablecoinBalanceAfter == stablecoinBalanceBefore - debtBefore;
+}
+
+rule integrityOfAddCollateral(uint256 collateral, address _for) {
+    env e;
+    mathint debtBefore = get_initial_debt(_for);
+
+    add_collateral(e, collateral, _for);
+
+    mathint debtAfter = get_initial_debt(_for);
+
+    assert debtBefore == debtAfter;
+}
+
+// rule integrityOfRemoveCollateral(uint256 collateral, bool use_eth) {
+//     env e;
+
+//     remove_collateral(e, collateral, use_eth);
+// }
+
+// rule integrityOfBorrowMore(uint256 collateral, uint256 debt) {
+//     env e;
+
+//     borrow_more(e, collateral, debt)
+
+// }
