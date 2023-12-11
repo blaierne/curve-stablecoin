@@ -8,4 +8,4 @@ certoraRun contracts/Controller.vy certora/mocs/Stablecoin.vy contracts/AMM.vy c
     --optimistic_loop \
     --process evm \
     --wait_for_results \
-    --msg "Controller" --server production --coverage_info basic --prover_version shelly/cert4266bigintslots
+    --msg "Controller" --server production --coverage_info basic --prover_version shelly/vyperlinking

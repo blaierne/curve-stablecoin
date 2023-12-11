@@ -44,7 +44,7 @@ methods {
 
     // ControllerHarness:
     function get_initial_debt(address) external returns (uint256) envfree;
-    function get_rate_mul(address) external returns (uint256) envfree;
+    // function get_rate_mul(address) external returns (uint256) envfree;
 
     // AMM:
     function AMM.A() external returns (uint256);
@@ -168,6 +168,11 @@ function getWeth() returns address {
 // invariant totalDebtEqSumAllDebts()
 //     to_mathint(total_debt()) == sumAllDebt;
 
+invariant loansAndLoansIxInverse(address user)
+    loansMirror[loansIxMirror[user]] == user;
+
+invariant mintedPlusRedeemedEqTotalSupply() 
+    to_mathint(total_debt()) == minted() + redeemed(); // maybe stablecoin.balaceOf(currentContratc / AMM) == minted() + redeemed();?
 
 rule integrityOfCreateLoan(uint256 collateralAmaount, uint256 debt, uint256 N) {
     env e;
@@ -216,7 +221,6 @@ rule integrityOfRepay(uint256 debtToRepay, address _for, int256 max_active_band,
 rule integrityOfAddCollateral(uint256 collateral, address _for) {
     env e;
 
-    bool loanExsitBefore = loan_exists(_for);
     mathint debtBefore = get_initial_debt(_for);
     mathint senderCollateralBalanceBefore = collateraltoken.balanceOf(e, e.msg.sender);
     mathint totalDebtBefore = total_debt();
@@ -229,13 +233,11 @@ rule integrityOfAddCollateral(uint256 collateral, address _for) {
 
     assert debtBefore == debtAfter && totalDebtBefore == totalDebtAfter;
     assert senderCollateralBalanceBefore == senderCollateralBalanceAfter + collateral;
-    assert loanExsitBefore;
 }
 
 rule integrityOfRemoveCollateral(uint256 collateral, bool use_eth) {
     env e;
 
-    bool loanExsitBefore = loan_exists(e.msg.sender);
     mathint debtBefore = get_initial_debt(e.msg.sender);
     mathint senderCollateralBalanceBefore = collateraltoken.balanceOf(e, e.msg.sender);
     mathint totalDebtBefore = total_debt();
@@ -248,12 +250,32 @@ rule integrityOfRemoveCollateral(uint256 collateral, bool use_eth) {
 
     assert debtBefore == debtAfter && totalDebtBefore == totalDebtAfter;
     assert senderCollateralBalanceAfter == senderCollateralBalanceBefore + collateral;
-    assert loanExsitBefore;
 }
 
-// rule integrityOfBorrowMore(uint256 collateral, uint256 debt) {
+rule integrityOfBorrowMore(uint256 collateral, uint256 debt) {
+    env e;
+    mathint mintedBefore = minted();
+    mathint debtBefore = get_initial_debt(e.msg.sender);
+    mathint senderCollateralBalanceBefore = collateraltoken.balanceOf(e, e.msg.sender);
+    mathint totalDebtBefore = total_debt();
+
+    borrow_more(e, collateral, debt);
+
+    mathint mintedAfter = minted();
+    mathint debtAfter = get_initial_debt(e.msg.sender);
+    mathint senderCollateralBalanceAfter = collateraltoken.balanceOf(e, e.msg.sender);
+    mathint totalDebtAfter = total_debt();
+
+    assert mintedAfter == mintedBefore + debt;
+    assert senderCollateralBalanceAfter == senderCollateralBalanceBefore - collateral;
+    assert debtBefore == debtAfter && totalDebtBefore == totalDebtAfter;
+}
+
+// rule borrowMoreCummutative(uint256 collateral1, uint256 debt1, uint256 collateral2, uint256 debt2) {
 //     env e;
 
-//     borrow_more(e, collateral, debt)
-
+//     require collateral1 + collateral2 < max_uint256;
+//     require debt1 + debt2 < max_uint256;
 // }
+
+// rule liquidateOnlyIfHealthFactorUnderOne() {}
