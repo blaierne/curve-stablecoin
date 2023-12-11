@@ -25,8 +25,8 @@ methods {
     function add_liquidity(uint256[], uint256, address) external returns(uint256);
     function remove_liquidity(uint256, uint256[], address) external returns(uint256[]);
     function remove_liquidity_imbalance(uint256[], uint256, address) external returns(uint256[]);
-    function get_dy(int128, int128, uint256) external returns(uint256);
-    function get_dx(int128, int128, uint256) external returns(uint256);
+    function get_dy(int128, int128, uint256) external returns(uint256) envfree;
+    function get_dx(int128, int128, uint256) external returns(uint256) envfree;
     function exchange(int128, int128, uint256, uint256, address) external returns(uint256);
     function calc_withdraw_one_coin(uint256, int128) external returns(uint256);
     function ramp_A(uint256, uint256) external;
@@ -38,8 +38,29 @@ methods {
     function withdraw_admin_fees() external;
 
 
+
+
+	// // Constants
+	// function N_COINS() external returns uint256 envfree;
+	// function N_COINS_128() external returns int128 envfree;
+	// function PRECISION() external returns uint256 envfree;
+	// function FEE_DENOMINATOR() external returns uint256 envfree;
+	// function ADMIN_FEE() external returns uint256 envfree;
+	// function A_PRECISION() external returns uint256 envfree;
+	// function MAX_FEE() external returns uint256 envfree;
+	// function MAX_A() external returns uint256 envfree;
 }
 
+// function setConstants(env e) {
+// 	require N_COINS() == 2;
+// 	require N_COINS_128() == 2;
+// 	require PRECISION() == 10^18;
+// 	require FEE_DENOMINATOR() == 10^10;
+// 	require ADMIN_FEE() == 5000000000;
+// 	require A_PRECISION() == 100;
+//     require MAX_FEE() == 5*10^9;
+// 	require MAX_A() == 1000000;
+// }
 
 
 //////////////////////////////////////////
@@ -440,15 +461,107 @@ rule onlyAllowedMethodsMayChangeTotalSupply(method f) {
 
 
 
+// Invertiblity of get_dx and get_dy
+/*
+def get_dy(i: int128, j: int128, dx: uint256) -> uint256:
+    """
+    @notice Calculate the current output dy given input dx
+    @dev Index values can be found via the `coins` public getter method
+    @param i Index value for the coin to send
+    @param j Index valie of the coin to recieve
+    @param dx Amount of `i` being exchanged
+    @return Amount of `j` predicted
+	"""	
+
+// Send dx of coin i, returns the number of coins j received.
+
+
+def get_dx(i: int128, j: int128, dy: uint256) -> uint256:
+    """
+    @notice Calculate the current input dx given output dy
+    @dev Index values can be found via the `coins` public getter method
+    @param i Index value for the coin to send
+    @param j Index valie of the coin to recieve
+    @param dy Amount of `j` being received after exchange
+    @return Amount of `i` predicted
+    """
+*/
+
+// Want to get dy of coin j, returns how much should I send of i to get it.
+
+rule invertibilityOfget_dxAndget_dy(env e, int128 i, int128 j, uint256 dx) {
+	require i == 0 || i == 1;
+	require j == 0 || j == 1;
+	require i != j;
+
+	uint256 dy = get_dy(i, j, dx); // I send dx of coin i and get dy of coin j.
+	uint256 new_dx = get_dx(i, j, dy); // I want to receive dy of coin j, I need to send new_dx of coint i.
+
+	// dx and new_dx should match - both lead to getting dy of coin j.
+	assert dx == new_dx;
+}
+
+rule invertibilityOfget_dxAndget_dyNeq1(env e, int128 i, int128 j, uint256 dx) {
+	require i == 0 || i == 1;
+	require j == 0 || j == 1;
+	require i != j;
+	uint256 dy = get_dy(i, j, dx); // I send dx of coin i and get dy of coin j.
+	uint256 new_dx = get_dx(i, j, dy); // I want to receive dy of coin j, I need to send new_dx of coint i.
+
+	// dx and new_dx should match - both lead to getting dy of coin j.
+	assert dx >= new_dx;
+}
+
+rule invertibilityOfget_dxAndget_dyNeq2(env e, int128 i, int128 j, uint256 dx) {
+	require i == 0 || i == 1;
+	require j == 0 || j == 1;
+	require i != j;
+	uint256 dy = get_dy(i, j, dx); // I send dx of coin i and get dy of coin j.
+	uint256 new_dx = get_dx(i, j, dy); // I want to receive dy of coin j, I need to send new_dx of coint i.
+
+	// dx and new_dx should match - both lead to getting dy of coin j.
+	assert dx <= new_dx;
+}
+
+rule invertibilityOfget_dyAndget_dx(env e, int128 i, int128 j, uint256 dy) {
+	require i == 0 || i == 1;
+	require j == 0 || j == 1;
+	require i != j;
+	uint256 dx = get_dx(i, j, dy);
+	uint256 new_dy = get_dy(i, j, dx);
+
+	// dy and new_dy should match - both express how much I get for selling dy of coin j.
+	assert dy == new_dy;
+}
+
+rule invertibilityOfget_dyAndget_dxNeq1(env e, int128 i, int128 j, uint256 dy) {
+	require i == 0 || i == 1;
+	require j == 0 || j == 1;
+	require i != j;
+	uint256 dx = get_dx(i, j, dy);
+	uint256 new_dy = get_dy(i, j, dx);
+
+	// dy and new_dy should match - both express how much I get for selling dy of coin j.
+	assert dy >= new_dy;
+}
+
+rule invertibilityOfget_dyAndget_dxNeq2(env e, int128 i, int128 j, uint256 dy) {
+	require i == 0 || i == 1;
+	require j == 0 || j == 1;
+	require i != j;
+	uint256 dx = get_dx(i, j, dy);
+	uint256 new_dy = get_dy(i, j, dx);
+
+	// dy and new_dy should match - both express how much I get for selling dy of coin j.
+	assert dy <= new_dy;
+}
+
+// Function get_dx should predict the result of exchange
 
 
 
 
-
-
-
-
-
+// Functions get_D, get_y do not revert
 
 
 
