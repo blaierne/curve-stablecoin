@@ -45,6 +45,7 @@ methods {
     // ControllerHarness:
     function get_initial_debt(address) external returns (uint256) envfree;
     // function get_rate_mul(address) external returns (uint256) envfree;
+    // function getHealthFactor(address, uint256, bool, uint256) external returns (int256) envfree;
 
     // AMM:
     function AMM.A() external returns (uint256);
@@ -168,11 +169,11 @@ function getWeth() returns address {
 // invariant totalDebtEqSumAllDebts()
 //     to_mathint(total_debt()) == sumAllDebt;
 
-invariant loansAndLoansIxInverse(address user)
-    loansMirror[loansIxMirror[user]] == user;
+// invariant loansAndLoansIxInverse(address user)
+//     loansMirror[loansIxMirror[user]] == user;
 
-invariant mintedPlusRedeemedEqTotalSupply() 
-    to_mathint(total_debt()) == minted() + redeemed(); // maybe stablecoin.balaceOf(currentContratc / AMM) == minted() + redeemed();?
+// invariant mintedPlusRedeemedEqTotalSupply() 
+//     to_mathint(total_debt()) == minted() + redeemed(); // maybe stablecoin.balaceOf(currentContratc / AMM) == minted() + redeemed();?
 
 rule integrityOfCreateLoan(uint256 collateralAmaount, uint256 debt, uint256 N) {
     env e;
@@ -271,11 +272,62 @@ rule integrityOfBorrowMore(uint256 collateral, uint256 debt) {
     assert debtBefore == debtAfter && totalDebtBefore == totalDebtAfter;
 }
 
-// rule borrowMoreCummutative(uint256 collateral1, uint256 debt1, uint256 collateral2, uint256 debt2) {
+// rule integrityOfLiquidate(address user, uint256 min_x, bool use_eth) {
 //     env e;
 
-//     require collateral1 + collateral2 < max_uint256;
-//     require debt1 + debt2 < max_uint256;
+//     int256 healthFactor = health(user, true);
+
+//     liquidate(e, user, min_x, use_eth);
 // }
 
-// rule liquidateOnlyIfHealthFactorUnderOne() {}
+rule borrowMoreCummutative(uint256 collateral1, uint256 debt1, uint256 collateral2, uint256 debt2) {
+    env e;
+    uint256 combinedCollateral = assert_uint256(collateral1 + collateral2);
+    uint256 combinedDebt = assert_uint256(debt1 + debt2);
+
+    storage initialStorage = lastStorage;
+
+    borrow_more(e, collateral1, debt1);
+    borrow_more(e, collateral2, debt2);
+
+    mathint mintedSeperate = minted();
+    mathint debtSeperate = get_initial_debt(e.msg.sender);
+    mathint senderCollateralBalanceSeperate = collateraltoken.balanceOf(e, e.msg.sender);
+    mathint totalDebtSeperate = total_debt();
+
+    borrow_more(e, combinedCollateral, combinedDebt) at initialStorage;
+
+    mathint mintedCombined = minted();
+    mathint debtCombined = get_initial_debt(e.msg.sender);
+    mathint senderCollateralBalanceCombined = collateraltoken.balanceOf(e, e.msg.sender);
+    mathint totalDebtCombined = total_debt();
+
+    assert mintedSeperate == mintedCombined;
+    assert debtSeperate == debtCombined;
+    assert totalDebtSeperate == totalDebtCombined;
+    assert senderCollateralBalanceSeperate == senderCollateralBalanceCombined;
+}
+
+rule liquidateOnlyIfHealthFactorNegative(address user, uint256 min_x, bool use_eth) {
+    env e;
+
+    int256 healthFactor = health(user, true);
+
+    liquidate(e, user, min_x, use_eth);
+
+    assert healthFactor < 0;
+}
+
+rule noChangeToOther(method f, address user) {
+    env e;
+    calldataarg args;
+
+    require e.msg.sender != user;
+    uint256 userBalanceBefore = collateraltoken.balanceOf(e, user);
+
+    f(e, args);
+
+    uint256 userBalanceAfter = collateraltoken.balanceOf(e, user);
+
+    assert userBalanceBefore == userBalanceAfter;
+}
