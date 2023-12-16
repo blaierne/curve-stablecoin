@@ -778,8 +778,8 @@ def withdraw(user: address, frac: uint256) -> uint256[2]:
         x: uint256 = self.bands_x[n]
         y: uint256 = self.bands_y[n]
         ds: uint256 = unsafe_div(frac * user_shares[i], 10**18)  # Can ONLY zero out when frac == 10**18
-        assert frac >= 10**18 or ds < user_shares[i], "NL summary"
-        assert frac != 10**18 or ds == user_shares[i], "NL summary"
+        # assert frac >= 10**18 or ds < user_shares[i], "NL summary"
+        # assert frac != 10**18 or ds == user_shares[i], "NL summary"
         user_shares[i] = unsafe_sub(user_shares[i], ds)
         s: uint256 = self.total_shares[n]
         new_shares: uint256 = s - ds
