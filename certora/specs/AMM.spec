@@ -150,12 +150,14 @@ rule deposit_adds_to_bands(address user, uint256 amount, int256 n1, int256 n2) {
 
 rule withdraw_removes_from_bands(address user, uint256 frac) {
     env e;
+    requireInvariant n1_n2_inrange();
     require BORROWED_PRECISION() != 0;
     // work around for bug in AMM.vy
     require BORROWED_PRECISION() == 1;
     require COLLATERAL_PRECISION() != 0;
     mathint total_x_before = total_x;
     mathint total_y_before = total_y;
+    mathint num_bands = user_n2[user] - user_n1[user] + 1;
     uint256[2] amounts;
     amounts = withdraw(e, user, frac);
     assert e.msg.sender == admin();
@@ -163,8 +165,8 @@ rule withdraw_removes_from_bands(address user, uint256 frac) {
     uint256 amount_y = amounts[1];
     mathint removed_x = total_x_before - total_x;
     mathint removed_y = total_y_before - total_y;
-    assert amount_x * BORROWED_PRECISION() <= removed_x && removed_x < (amount_x+2) * BORROWED_PRECISION();
-    assert amount_y * COLLATERAL_PRECISION() <= removed_y && removed_y < (amount_y+2) * COLLATERAL_PRECISION();
+    assert amount_x * BORROWED_PRECISION() <= removed_x && removed_x < (amount_x + 2 * num_bands) * BORROWED_PRECISION();
+    assert amount_y * COLLATERAL_PRECISION() <= removed_y && removed_y < (amount_y + 2 * num_bands) * COLLATERAL_PRECISION();
 }
 
 rule withdraw_all_user_shares(address user) {
@@ -205,4 +207,11 @@ rule integrity_of_read_user_tick_numbers(address user) {
     n1n2 = read_user_tick_numbers(user);
     assert n1n2[0] <= n1n2[1];
     assert to_mathint(n1n2[0]) == user_n1[user] && to_mathint(n1n2[1]) == user_n2[user];
+}
+
+rule deposit_only_in_non_active_bands(address user, uint256 amount, int256 n1, int256 n2) {
+    env e;
+    require e.msg.sender == admin() => n1 <= n2;
+    deposit_range(e, user, amount, n1, n2);
+    assert n1 > active_band();
 }
