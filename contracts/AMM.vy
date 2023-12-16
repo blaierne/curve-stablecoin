@@ -97,9 +97,9 @@ struct DetailedTrade:
     admin_fee: uint256
 
 
-BORROWED_TOKEN: immutable(ERC20)    # x
+BORROWED_TOKEN: public(ERC20)    # x
 BORROWED_PRECISION: public(immutable(uint256))
-COLLATERAL_TOKEN: immutable(ERC20)  # y
+COLLATERAL_TOKEN: public(ERC20)  # y
 COLLATERAL_PRECISION: public(immutable(uint256))
 BASE_PRICE: immutable(uint256)
 admin: public(address)
@@ -171,9 +171,9 @@ def __init__(
     @param _price_oracle_contract External price oracle which has price() and price_w() methods
            which both return current price of collateral multiplied by 1e18
     """
-    BORROWED_TOKEN = ERC20(_borrowed_token)
+    self.BORROWED_TOKEN = ERC20(_borrowed_token)
     BORROWED_PRECISION = _borrowed_precision
-    COLLATERAL_TOKEN = ERC20(_collateral_token)
+    self.COLLATERAL_TOKEN = ERC20(_collateral_token)
     COLLATERAL_PRECISION = _collateral_precision
     A = _A
     BASE_PRICE = _base_price
@@ -216,8 +216,8 @@ def set_admin(_admin: address):
     """
     assert self.admin == empty(address)
     self.admin = _admin
-    self.approve_max(BORROWED_TOKEN, _admin)
-    self.approve_max(COLLATERAL_TOKEN, _admin)
+    self.approve_max(self.BORROWED_TOKEN, _admin)
+    self.approve_max(self.COLLATERAL_TOKEN, _admin)
 
 
 @internal
@@ -231,9 +231,9 @@ def sqrt_int(_x: uint256) -> uint256:
 
 
 @external
-@pure
+@view
 def coins(i: uint256) -> address:
-    return [BORROWED_TOKEN.address, COLLATERAL_TOKEN.address][i]
+    return [self.BORROWED_TOKEN.address, self.COLLATERAL_TOKEN.address][i]
 
 
 @internal
@@ -778,6 +778,8 @@ def withdraw(user: address, frac: uint256) -> uint256[2]:
         x: uint256 = self.bands_x[n]
         y: uint256 = self.bands_y[n]
         ds: uint256 = unsafe_div(frac * user_shares[i], 10**18)  # Can ONLY zero out when frac == 10**18
+        assert frac >= 10**18 or ds < user_shares[i], "NL summary"
+        assert frac != 10**18 or ds == user_shares[i], "NL summary"
         user_shares[i] = unsafe_sub(user_shares[i], ds)
         s: uint256 = self.total_shares[n]
         new_shares: uint256 = s - ds
@@ -1070,15 +1072,15 @@ def _exchange(i: uint256, j: uint256, amount: uint256, minmax_amount: uint256, _
     lm: LMGauge = self.liquidity_mining_callback
     collateral_shares: DynArray[uint256, MAX_TICKS_UINT] = []
 
-    in_coin: ERC20 = BORROWED_TOKEN
-    out_coin: ERC20 = COLLATERAL_TOKEN
+    in_coin: ERC20 = self.BORROWED_TOKEN
+    out_coin: ERC20 = self.COLLATERAL_TOKEN
     in_precision: uint256 = BORROWED_PRECISION
     out_precision: uint256 = COLLATERAL_PRECISION
     if i == 1:
         in_precision = out_precision
         in_coin = out_coin
         out_precision = BORROWED_PRECISION
-        out_coin = BORROWED_TOKEN
+        out_coin = self.BORROWED_TOKEN
 
     out: DetailedTrade = empty(DetailedTrade)
     if use_in_amount:

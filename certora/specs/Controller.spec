@@ -5,7 +5,7 @@ using FactoryMock as factory;
 using WETH as weth;
 
 methods {
-    // view: 
+    // view:
     function factory() external returns (address) envfree;
     function amm() external returns (address) envfree;
     function collateral_token() external returns (address) envfree;
@@ -14,7 +14,7 @@ methods {
     function total_debt() external returns (uint256) envfree;
     function max_borrowable(uint256, uint256, uint256) external returns (uint256) envfree;
     function calculate_debt_n1(uint256, uint256, uint256) external returns (int256) envfree;
-    
+
     function create_loan(uint256, uint256, uint256) external; // payable nonreentrant
     // function function create_loan_extended(uint256, uint256, uint256, address, DynArray[uint256,5]) external; // payable nonreentrant
     function add_collateral(uint256, address) external; // payable nonreentrant
@@ -41,6 +41,7 @@ methods {
     // Controller Getters:
     function minted() external returns (uint256) envfree;
     function redeemed() external returns (uint256) envfree;
+    function AMM() external returns (address) envfree;
 
     // ControllerHarness:
     function get_initial_debt(address) external returns (uint256) envfree;
@@ -66,21 +67,25 @@ methods {
     function AMM.price_oracle() external returns (uint256);
     function AMM.can_skip_bands(int256) external returns (bool);
     // function set_price_oracle(PriceOracle) external; // nonpayable
-    function AMM.admin_fees_x() external returns (uint256);
-    function AMM.admin_fees_y() external returns (uint256);
+    function AMM.admin_fees_x() external returns (uint256) envfree;
+    function AMM.admin_fees_y() external returns (uint256) envfree;
     function AMM.reset_admin_fees() external; // nonpayable
     function AMM.has_liquidity(address) external returns (bool);
     function AMM.bands_x(int256) external returns (uint256);
     function AMM.bands_y(int256) external returns (uint256);
     function AMM.set_callback(address) external; // nonpayable
+    function AMM.COLLATERAL_TOKEN() external returns (address) envfree;
+    function AMM.BORROWED_TOKEN() external returns (address) envfree;
+    function AMM.COLLATERAL_PRECISION() external returns (uint256) envfree;
+    function AMM.BORROWED_PRECISION() external returns (uint256) envfree;
 
     // STABLECOIN:
     function Stablecoin.balanceOf(address) external returns (uint256) envfree;
     function Stablecoin.totalSupply() external returns (uint256) envfree;
 
     // STABLECOIN:
-    function CollateralToken.balanceOf(address) external returns (uint256);
-    function CollateralToken.totalSupply() external returns (uint256);
+    function CollateralToken.balanceOf(address) external returns (uint256) envfree;
+    function CollateralToken.totalSupply() external returns (uint256) envfree;
 
     // WETH:
 
@@ -97,6 +102,22 @@ methods {
 ghost address factoryAdmin;
 ghost address feeReceiver;
 ghost mathint sumAllDebt;
+
+ghost mathint total_x { init_state axiom total_x == 0; }
+ghost mathint total_y { init_state axiom total_y == 0; }
+
+hook Sstore AMM.bands_x[KEY int256 n] uint256 newValue (uint256 oldValue) STORAGE {
+    total_x = total_x - oldValue + newValue;
+}
+
+hook Sstore AMM.bands_y[KEY int256 n] uint256 newValue (uint256 oldValue) STORAGE {
+    total_y = total_y - oldValue + newValue;
+}
+
+invariant liquidity_on_collateral()
+    (collateraltoken.balanceOf(AMM()) - amm.admin_fees_y()) * amm.COLLATERAL_PRECISION() >= total_y;
+
+
 
 // ghost mapping(address => uint256) loansInitialDebt {
 //     init_state axiom forall address user . loansInitialDebt[user] == 0;
