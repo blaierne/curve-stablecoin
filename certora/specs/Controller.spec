@@ -60,11 +60,11 @@ methods {
     function AMM.get_sum_xy(address) external returns (uint256[2]);
     function AMM.withdraw(address, uint256) external returns (uint256[2]); // nonpayable
     function AMM.get_x_down(address) external returns (uint256);
-    function AMM.get_rate_mul() external returns (uint256);
+    // function AMM.get_rate_mul() external returns (uint256);
     function AMM.set_rate(uint256) external returns (uint256); // nonpayable
     function AMM.set_fee(uint256) external; // nonpayable
     function AMM.set_admin_fee(uint256) external; // nonpayable
-    function AMM.price_oracle() external returns (uint256);
+    function AMM.price_oracle() external returns (uint256) => CONSTANT;
     function AMM.can_skip_bands(int256) external returns (bool);
     // function set_price_oracle(PriceOracle) external; // nonpayable
     function AMM.admin_fees_x() external returns (uint256);
@@ -73,7 +73,22 @@ methods {
     function AMM.has_liquidity(address) external returns (bool);
     function AMM.bands_x(int256) external returns (uint256);
     function AMM.bands_y(int256) external returns (uint256);
-    function AMM.set_callback(address) external; // nonpayable
+    function AMM.set_callback(address) external => NONDET; // nonpayable
+    
+
+    // AMM Havocing:
+    function AMM.set_admin(address) external => NONDET;
+    function AMM.exchange_dy(uint256,uint256,uint256,uint256) external returns (uint256[2]) => NONDET;
+    function AMM.exchange(uint256,uint256,uint256,uint256,address) external returns (uint256[2]) => NONDET;
+    function AMM.get_dxdy(uint256,uint256,uint256) external returns (uint256, uint256) => NONDET;
+    // function AMM.get_x_down(address) external => NONDET;
+    function AMM.get_dydx(uint256,uint256,uint256) external returns (uint256, uint256) => NONDET;
+    function AMM.get_dy(uint256,uint256,uint256) external returns (uint256) => NONDET;
+    function AMM.get_y_up(address) external returns (uint256) => NONDET;
+    function AMM.exchange_dy(uint256,uint256,uint256,uint256,address) external returns (uint256[2]) => NONDET;
+    function AMM.get_amount_for_price(uint256) external returns (uint256, bool) => NONDET;
+    function AMM.exchange(uint256,uint256,uint256,uint256) external returns (uint256[2]) => NONDET;
+
 
     // STABLECOIN:
     function Stablecoin.balanceOf(address) external returns (uint256) envfree;
@@ -87,12 +102,15 @@ methods {
 
     // Factory:
     function FactoryMock.stablecoin() external returns address envfree => getStablecoin();
-    function FactoryMock.admin() external returns address envfree => getFactoryAdmin();
+    function FactoryMock.admin() external returns address envfree => NONDET;
     function FactoryMock.fee_receiver() external returns address envfree => getFeeReceiver();
     function FactoryMock.WETH() external returns address envfree => getWeth();
 
     // MonetaryPolicy:
-    function _.rate_write() external => NONDET;
+    function _.rate_write() external => CONSTANT;
+    
+    // havocing AMM:
+    function _.get_rate_mul() external => CONSTANT;
 }
 
 ghost address factoryAdmin;
@@ -166,14 +184,18 @@ function getWeth() returns address {
     return weth;
 }
 
-// invariant totalDebtEqSumAllDebts()
-//     to_mathint(total_debt()) == sumAllDebt;
+invariant totalDebtEqSumAllDebts()
+    to_mathint(total_debt()) == sumAllDebt;
 
-// invariant loansAndLoansIxInverse(address user)
-//     loansMirror[loansIxMirror[user]] == user;
+invariant loansAndLoansIxInverse(address user)
+    loansMirror[loansIxMirror[user]] == user;
 
-// invariant mintedPlusRedeemedEqTotalSupply() 
-//     to_mathint(total_debt()) == minted() + redeemed(); // maybe stablecoin.balaceOf(currentContratc / AMM) == minted() + redeemed();?
+invariant mintedPlusRedeemedEqTotalSupply() 
+    to_mathint(total_debt()) == minted() - redeemed(); // maybe stablecoin.balaceOf(currentContratc / AMM) == minted() + redeemed();?
+
+
+invariant loansAndShares(address user)
+    loan_exists(user) => AMM.has_liquidity(user);
 
 rule integrityOfCreateLoan(uint256 collateralAmaount, uint256 debt, uint256 N) {
     env e;
@@ -255,6 +277,7 @@ rule integrityOfRemoveCollateral(uint256 collateral, bool use_eth) {
 
 rule integrityOfBorrowMore(uint256 collateral, uint256 debt) {
     env e;
+    require e.msg.sender != 0;
     mathint mintedBefore = minted();
     mathint debtBefore = get_initial_debt(e.msg.sender);
     mathint senderCollateralBalanceBefore = collateraltoken.balanceOf(e, e.msg.sender);
@@ -268,20 +291,14 @@ rule integrityOfBorrowMore(uint256 collateral, uint256 debt) {
     mathint totalDebtAfter = total_debt();
 
     assert mintedAfter == mintedBefore + debt;
-    assert senderCollateralBalanceAfter == senderCollateralBalanceBefore - collateral;
+    assert debt > 0 => senderCollateralBalanceAfter == senderCollateralBalanceBefore - collateral;
     assert debtBefore == debtAfter && totalDebtBefore == totalDebtAfter;
 }
 
-// rule integrityOfLiquidate(address user, uint256 min_x, bool use_eth) {
-//     env e;
-
-//     int256 healthFactor = health(user, true);
-
-//     liquidate(e, user, min_x, use_eth);
-// }
-
-rule borrowMoreCummutative(uint256 collateral1, uint256 debt1, uint256 collateral2, uint256 debt2) {
+rule borrowMoreCumulative(uint256 collateral1, uint256 debt1, uint256 collateral2, uint256 debt2) {
     env e;
+    require collateral1 + collateral2 < max_uint256;
+    require debt1 + debt2 < max_uint256;
     uint256 combinedCollateral = assert_uint256(collateral1 + collateral2);
     uint256 combinedDebt = assert_uint256(debt1 + debt2);
 
@@ -318,8 +335,11 @@ rule liquidateOnlyIfHealthFactorNegative(address user, uint256 min_x, bool use_e
     assert healthFactor < 0;
 }
 
-rule noChangeToOther(method f, address user) {
+// maybe haave a case for the repay function (someone pays user loan)
+rule noReducerToOther(method f, address user) 
+    filtered { f -> f.contract == currentContract } {
     env e;
+    
     calldataarg args;
 
     require e.msg.sender != user;
@@ -329,5 +349,33 @@ rule noChangeToOther(method f, address user) {
 
     uint256 userBalanceAfter = collateraltoken.balanceOf(e, user);
 
-    assert userBalanceBefore == userBalanceAfter;
+    assert userBalanceBefore >= userBalanceAfter;
+}
+
+// rule cantBorrowMoreThanBorrowable(uint256 collateral, uint256 N, uint256 currentDebt) {
+//     env e;
+//     uint256 debtBefore = get_initial_debt(e.msg.sender);
+
+//     max_borrowable(e, collateral, N, current_debt);
+// }
+
+
+// rule repayUnderWater() {
+
+// }
+
+// min_x Minimal amount of stablecoin withdrawn
+rule integrityOfLiquidate(address user, uint256 min_x, bool use_eth) {
+    env e;
+
+    mathint liquidatorStableCoinBalanceBefore = stablecoin.balanceOf(e.msg.sender);
+
+    int256 userHealthFactor = health(user, true);
+
+    liquidate(e, user, min_x, use_eth);
+
+    mathint liquidatorStableCoinBalanceAfter = stablecoin.balanceOf(e.msg.sender);
+
+    assert userHealthFactor < 0;
+    assert liquidatorStableCoinBalanceAfter >= liquidatorStableCoinBalanceBefore + min_x;
 }

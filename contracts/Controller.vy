@@ -1332,8 +1332,3 @@ def collect_fees() -> uint256:
 @view
 def get_initial_debt(user: address) -> uint256:
     return self.loan[user].initial_debt
-
-@external
-@view
-def get_rate_mul(user: address) -> uint256:
-    return self.loan[user].rate_mul
