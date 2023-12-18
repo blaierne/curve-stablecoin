@@ -335,12 +335,52 @@ rule noChangeToOther(method f, address user) {
 }
 
 
+// rule onlyLiquidateCanDecreaseOthersAMMShares(method f, address user) {
+//     env e;
+
+//     require amm.user_shares[user].ticks[0] > 0;
+
+//     liquidate(e, user,100,true);
+
+//     assert amm.user_shares[user].ticks[0] == 0;
+// }
+
+// Prover fails with 
+// java.lang.IllegalStateException: Inconsistency in Storage Analysis vs what solc reports,
+// 1 is non zero within IntegralType(typeLabel=uint256, numBytes=32, descriptor=uint256, lowerBound=null, upperBound=null)
+/*
 rule onlyLiquidateCanDecreaseOthersAMMShares(method f, address user) {
     env e;
+    calldataarg args;
 
-    require amm.user_shares(e, user).ticks[0] > 0;
+    require amm.user_shares[user].ticks[0] > 0;
 
-    liquidate(e, user,100,true);
+    f(e, args);
 
-    assert amm.user_shares(e, user).ticks[0] == 0;
+    assert (amm.user_shares[user].ticks[0] == 0) => f.selector == sig:liquidate(address, uint256, bool).selector;
+}
+*/
+
+// ghost mapping(address => bool) hasAmmShares {
+// //    init_state axiom forall address user . loansInitialDebt[user] == 0;
+// }
+
+// hook Sstore amm.user_shares[KEY address user].ticks[0] uint256 newValue (uint256 oldValue) STORAGE {
+//     hasAmmShares[user] = (newValue != 0);
+// }
+
+// hook Sload uint256 value amm.user_shares[KEY address user].ticks[0] STORAGE {
+//     require  hasAmmShares[user] == (value != 0)
+// }
+
+rule onlyLiquidateCanDecreaseOthersAMMShares(method f, address user) {
+    env e;
+    calldataarg args;
+
+    require amm.has_liquidity(e, user);
+
+    f(e, args);
+
+    assert !amm.has_liquidity(e, user) => f.selector == sig:liquidate(address, uint256, bool).selector;
+
 }
