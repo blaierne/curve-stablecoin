@@ -75,6 +75,8 @@ methods {
     function AMM.bands_y(int256) external returns (uint256);
     function AMM.set_callback(address) external; // nonpayable
 
+    // function AMM.user_shares(address) external returns (UserTicks) envfree;
+
     // STABLECOIN:
     function Stablecoin.balanceOf(address) external returns (uint256) envfree;
     function Stablecoin.totalSupply() external returns (uint256) envfree;
@@ -330,4 +332,15 @@ rule noChangeToOther(method f, address user) {
     uint256 userBalanceAfter = collateraltoken.balanceOf(e, user);
 
     assert userBalanceBefore == userBalanceAfter;
+}
+
+
+rule onlyLiquidateCanDecreaseOthersAMMShares(method f, address user) {
+    env e;
+
+    require amm.user_shares(e, user).ticks[0] > 0;
+
+    liquidate(e, user,100,true);
+
+    assert amm.user_shares(e, user).ticks[0] == 0;
 }

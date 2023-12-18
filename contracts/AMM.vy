@@ -134,8 +134,8 @@ MAX_P_O_CHG: constant(uint256) = 12500 * 10**14  # <= 2**(1/3) - max relative ch
 bands_x: public(HashMap[int256, uint256])
 bands_y: public(HashMap[int256, uint256])
 
-total_shares: HashMap[int256, uint256]
-user_shares: HashMap[address, UserTicks]
+total_shares: public(HashMap[int256, uint256])
+user_shares: public(HashMap[address, UserTicks])
 DEAD_SHARES: constant(uint256) = 1000
 
 liquidity_mining_callback: public(LMGauge)
