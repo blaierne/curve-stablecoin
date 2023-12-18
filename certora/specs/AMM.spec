@@ -215,3 +215,46 @@ rule deposit_only_in_non_active_bands(address user, uint256 amount, int256 n1, i
     deposit_range(e, user, amount, n1, n2);
     assert n1 > active_band();
 }
+
+rule deposit_range_requires_sorted_arguments(address user, uint256 amount, int256 n1, int256 n2) {
+    env e;
+    deposit_range(e, user, amount, n1, n2);
+
+    assert n1 <= n2;
+
+
+
+    /* The deposit_range does not check whether n1 <= n2. This function is called in the following cases:
+    _create_loan(mvalue: uint256, collateral: uint256, debt: uint256, N: uint256, transfer_coins: bool)
+        assert N > MIN_TICKS-1, "Need more ticks" // MIN_TICKS == 4
+        n1: ...
+        n2: int256 = n1 + convert(N - 1, int256)
+
+    // PASS
+
+    _add_collateral_borrow(d_collateral: uint256, d_debt: uint256, _for: address, remove_collateral: bool):
+        ns: int256[2] = self.AMM.read_user_tick_numbers(_for)
+        n1: ...
+        n2: int256 = n1 + unsafe_sub(ns[1], ns[0])
+
+    repay(_d_debt: uint256, _for: address = msg.sender, max_active_band: int256 = 2**255-1, use_eth: bool = True)
+        ns: int256[2] = self.AMM.read_user_tick_numbers(_for)
+        if ns[0] > active_band:
+            n1: ...
+            n2: int256 = n1 + unsafe_sub(ns[1], ns[0])
+
+    
+    repay_extended(callbacker: address, callback_args: DynArray[uint256,5])
+        ns: int256[2] = self.AMM.read_user_tick_numbers(msg.sender)
+        if total_stablecoins < debt
+            n1: int256 = self._calculate_debt_n1(cb.collateral, debt, size)
+            n2: int256 = n1 + unsafe_sub(ns[1], ns[0])
+
+    */
+}
+
+
+
+
+
+
