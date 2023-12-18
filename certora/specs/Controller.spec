@@ -70,7 +70,7 @@ methods {
     function AMM.admin_fees_x() external returns (uint256);
     function AMM.admin_fees_y() external returns (uint256);
     function AMM.reset_admin_fees() external; // nonpayable
-    function AMM.has_liquidity(address) external returns (bool);
+    function AMM.has_liquidity(address) external returns (bool) envfree;
     function AMM.bands_x(int256) external returns (uint256);
     function AMM.bands_y(int256) external returns (uint256);
     function AMM.set_callback(address) external => NONDET; // nonpayable
@@ -195,11 +195,11 @@ invariant mintedPlusRedeemedEqTotalSupply()
 
 
 invariant loansAndShares(address user)
-    loan_exists(user) => AMM.has_liquidity(user);
+    loan_exists(user) => amm.has_liquidity(user);
 
 rule integrityOfCreateLoan(uint256 collateralAmaount, uint256 debt, uint256 N) {
     env e;
-    mathint wethAmount = e.msg.value;
+    // mathint wethAmount = e.msg.value;
     bool loanExsitBefore = loan_exists(e.msg.sender);
     mathint mintedBefore = minted();
     mathint stablecoinBalanceBefore = stablecoin.balanceOf(e.msg.sender);
