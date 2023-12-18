@@ -16,15 +16,15 @@ methods {
     function calculate_debt_n1(uint256, uint256, uint256) external returns (int256) envfree;
     
     function create_loan(uint256, uint256, uint256) external; // payable nonreentrant
-    // function function create_loan_extended(uint256, uint256, uint256, address, DynArray[uint256,5]) external; // payable nonreentrant
+    function create_loan_extended(uint256, uint256, uint256, address, uint256[]) external; // payable nonreentrant
     function add_collateral(uint256, address) external; // payable nonreentrant
     function remove_collateral(uint256, bool) external; // nonreentrant
     function borrow_more(uint256, uint256) external; // payable nonreentrant
     function repay(uint256, address, int256, bool) external; // nonreentrant
-    // function repay_extended(address, DynArray[uint256,5]) external;
+    function repay_extended(address, uint256[]) external;
     function health_calculator(address, int256, int256, bool, uint256) external returns (int256) envfree; // view
     function liquidate(address, uint256, bool) external;
-    // function liquidate_extended(address, uint256, uint256, bool, address, DynArray[uint256,5]) external;
+    function liquidate_extended(address, uint256, uint256, bool, address, uint256[]) external;
     function tokens_to_liquidate(address, uint256) external returns (uint256);
     function health(address, bool) external returns (int256) envfree;
     function amm_price() external returns (uint256) envfree;
@@ -378,4 +378,20 @@ rule integrityOfLiquidate(address user, uint256 min_x, bool use_eth) {
 
     assert userHealthFactor < 0;
     assert liquidatorStableCoinBalanceAfter >= liquidatorStableCoinBalanceBefore + min_x;
+}
+
+rule onlyLiquidateCanDecreaseShares(method f, address user) 
+    filtered { f -> f.contract == currentContract } {
+    env e;
+    calldataarg args;
+    require e.msg.sender != user;
+
+    bool hasLiquidityBefore = amm.has_liquidity(user);
+
+    f(e, args);
+
+    bool hasLiquidityAfter = amm.has_liquidity(user);
+
+    assert hasLiquidityBefore && !hasLiquidityAfter => 
+        (f.selector == sig:liquidate(address, uint256, bool).selector || f.selector == sig:liquidate_extended(address, uint256, uint256, bool, address, uint256[]).selector);
 }
