@@ -99,7 +99,7 @@ struct DetailedTrade:
 
 BORROWED_TOKEN: immutable(ERC20)    # x
 BORROWED_PRECISION: immutable(uint256)
-COLLATERAL_TOKEN: immutable(ERC20)  # y
+COLLATERAL_TOKEN: public(ERC20)  # y
 COLLATERAL_PRECISION: immutable(uint256)
 BASE_PRICE: immutable(uint256)
 admin: public(address)
@@ -171,7 +171,7 @@ def __init__(
     """
     BORROWED_TOKEN = ERC20(_borrowed_token)
     BORROWED_PRECISION = _borrowed_precision
-    COLLATERAL_TOKEN = ERC20(_collateral_token)
+    self.COLLATERAL_TOKEN = ERC20(_collateral_token)
     COLLATERAL_PRECISION = _collateral_precision
     A = _A
     BASE_PRICE = _base_price
@@ -215,7 +215,7 @@ def set_admin(_admin: address):
     assert self.admin == empty(address)
     self.admin = _admin
     self.approve_max(BORROWED_TOKEN, _admin)
-    self.approve_max(COLLATERAL_TOKEN, _admin)
+    self.approve_max(self.COLLATERAL_TOKEN, _admin)
 
 
 @internal
@@ -229,9 +229,9 @@ def sqrt_int(_x: uint256) -> uint256:
 
 
 @external
-@pure
 def coins(i: uint256) -> address:
-    return [BORROWED_TOKEN.address, COLLATERAL_TOKEN.address][i]
+    collateral_address: address = self.COLLATERAL_TOKEN.address
+    return [BORROWED_TOKEN.address, collateral_address][i]
 
 
 @internal
@@ -1067,7 +1067,7 @@ def _exchange(i: uint256, j: uint256, amount: uint256, minmax_amount: uint256, _
     collateral_shares: DynArray[uint256, MAX_TICKS_UINT] = []
 
     in_coin: ERC20 = BORROWED_TOKEN
-    out_coin: ERC20 = COLLATERAL_TOKEN
+    out_coin: ERC20 = self.COLLATERAL_TOKEN
     in_precision: uint256 = BORROWED_PRECISION
     out_precision: uint256 = COLLATERAL_PRECISION
     if i == 1:
