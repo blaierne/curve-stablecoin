@@ -1,3 +1,7 @@
+using Stablecoin as stablecoin;
+using CollateralToken as collateraltoken;
+
+
 methods {
     function total_shares(int256) external returns uint256 envfree;
     function admin() external returns address envfree;
@@ -7,6 +11,15 @@ methods {
     function bands_x(int256 n) external returns uint256 envfree;
     function bands_y(int256 n) external returns uint256 envfree;
     function read_user_tick_numbers(address) external returns int256[2] envfree;
+
+
+    // STABLECOIN:
+    function Stablecoin.balanceOf(address) external returns (uint256) envfree;
+    function Stablecoin.totalSupply() external returns (uint256) envfree;
+
+    // CollateralToken:
+    function CollateralToken.balanceOf(address) external returns (uint256) envfree;
+    function CollateralToken.totalSupply() external returns (uint256) envfree;
 }
 
 ghost mapping(address => int256) user_ns {
@@ -254,7 +267,217 @@ rule deposit_range_requires_sorted_arguments(address user, uint256 amount, int25
 }
 
 
+rule totalSharesToBandsYShouldBeConstantOnWithdraw(address user) {
+    env e;
+    int256 n;
+    // require user_n1[user] <= to_mathint(n) && to_mathint(n) <= user_n2[user];
+    require bands_y(n) > 0;
+    require active_band() < n;
+
+    uint256 frac;
+    require 0 <= frac && frac <= 10^18;
+
+    require e.msg.sender == admin();
+
+    mathint oldRatio = (total_shares(n) * 10^18) / bands_y(n);
+    require oldRatio == 10^21;
+    
+    withdraw(e, user, frac);
+    
+    require bands_y(n) > 1;
+
+    mathint newRatio_upper = (total_shares(n) * 10^18) / (bands_y(n) - 1);
+    mathint newRatio_lower = (total_shares(n) * 10^18) / (bands_y(n) + 1);
+    
+    assert newRatio_lower <= oldRatio;
+    assert oldRatio <= newRatio_upper;
+    // satisfy true;
+}
+
+
+
+rule totalSharesToBandsXShouldBeConstantOnWithdraw(address user) {
+    env e;
+    int256 n;
+    // require user_n1[user] <= to_mathint(n) && to_mathint(n) <= user_n2[user];
+    require bands_x(n) > 0;
+    require active_band() < n;
+
+    uint256 frac;
+    require 0 <= frac && frac <= 10^18;
+
+    require e.msg.sender == admin();
+
+    mathint oldRatio = (total_shares(n) * 10^18) / bands_x(n);
+    require oldRatio == 10^21;
+    withdraw(e, user, frac);
+    
+    require bands_x(n) > 1;
+
+    mathint newRatio_upper = (total_shares(n) * 10^18) / (bands_x(n) - 1);
+    mathint newRatio_lower = (total_shares(n) * 10^18) / (bands_x(n) + 1);
+
+    assert newRatio_lower <= oldRatio;
+    assert oldRatio <= newRatio_upper;
+    // satisfy true;
+}
+
+rule totalSharesToBandsYShouldBeConstantOnDepositRange(address user, uint256 amount, int256 n1, int256 n2) {
+    env e;
+
+    int256 n;
+
+    require e.msg.sender == admin() && n1 == n2 && n == n1;
+    require bands_y(n) > 0;
+
+    mathint oldBands = bands_y(n);
+
+    mathint oldRatio = (total_shares(n) * 10^18) / bands_y(n);
+
+    deposit_range(e, user, amount, n1, n2);
+
+    require bands_y(n) > 1;
+
+    mathint newRatio_upper = (total_shares(n) * 10^18) / (bands_y(n) - 1);
+    mathint newRatio_lower = (total_shares(n) * 10^18) / (bands_y(n) + 1);
+    
+    assert newRatio_lower <= oldRatio;
+    assert oldRatio <= newRatio_upper;
+
+    // satisfy true;
+}
 
 
 
 
+// Exchange... 
+// i = 0, j = 1, stablecoin is going to AMM (in coin), collateral out of AMM (out coin)
+// i = 1, j = 0, collateral is going to AMM, stablecoin out of AMM
+
+// e.msg.sender sends coins, _for gets coins
+rule integrityOfExchange_balance(uint256 i, uint256 j, uint256 in_amount, uint256 min_amount, address _for) {
+    env e;
+    
+    require (i == 0 && j == 1) || (i == 1 && j == 0);
+
+    require _for != currentContract;
+    require e.msg.sender != currentContract;
+
+    mathint userInCoinBalanceBefore;
+    mathint userOutCoinBalanceBefore;
+    mathint contractInCoinBalanceBefore;
+    mathint contractOutCoinBalanceBefore;
+
+    mathint userInCoinBalanceAfter;
+    mathint userOutCoinBalanceAfter;
+    mathint contractInCoinBalanceAfter;
+    mathint contractOutCoinBalanceAfter;
+    // mathint totalXBefore = total_x * BORROWED_PRECISION();
+
+    if (i == 0) {
+        userInCoinBalanceBefore = stablecoin.balanceOf(e.msg.sender);
+        contractInCoinBalanceBefore = stablecoin.balanceOf(currentContract);
+        userOutCoinBalanceBefore = collateraltoken.balanceOf(_for);
+        contractOutCoinBalanceBefore = collateraltoken.balanceOf(currentContract);
+    } else {
+        userInCoinBalanceBefore = collateraltoken.balanceOf(e.msg.sender);
+        contractInCoinBalanceBefore = collateraltoken.balanceOf(currentContract);
+        userOutCoinBalanceBefore = stablecoin.balanceOf(_for);
+        contractOutCoinBalanceBefore = stablecoin.balanceOf(currentContract);
+    }
+
+    exchange(e, i, j, in_amount, min_amount, _for);
+
+    if (i == 0) {
+        userInCoinBalanceAfter = stablecoin.balanceOf(e.msg.sender);
+        contractInCoinBalanceAfter = stablecoin.balanceOf(currentContract);
+        userOutCoinBalanceAfter = collateraltoken.balanceOf(_for);
+        contractOutCoinBalanceAfter = collateraltoken.balanceOf(currentContract);
+    } else {
+        userInCoinBalanceAfter = collateraltoken.balanceOf(e.msg.sender);
+        contractInCoinBalanceAfter = collateraltoken.balanceOf(currentContract);
+        userOutCoinBalanceAfter = stablecoin.balanceOf(_for);
+        contractOutCoinBalanceAfter = stablecoin.balanceOf(currentContract);
+    }
+    
+
+    // satisfy userOutCoinBalanceAfter > userOutCoinBalanceBefore;
+
+    assert userInCoinBalanceBefore >= userInCoinBalanceAfter;
+    assert userOutCoinBalanceBefore <= userOutCoinBalanceAfter;
+    assert contractInCoinBalanceBefore <= contractInCoinBalanceAfter;
+    assert contractOutCoinBalanceBefore >= contractOutCoinBalanceAfter;
+    assert userInCoinBalanceBefore - userInCoinBalanceAfter == contractInCoinBalanceAfter - contractInCoinBalanceBefore;
+    assert userOutCoinBalanceAfter - userOutCoinBalanceBefore == contractOutCoinBalanceBefore - contractOutCoinBalanceAfter;
+}
+
+rule exchangeDoesNotChangeUserShares(uint256 i, uint256 j, uint256 in_amount, uint256 min_amount) {
+    env e;
+    require (i == 0 && j == 1) || (i == 1 && j == 0);
+
+    address anyUser;
+
+    mathint sharesBefore_n1 = user_n1[anyUser];
+    mathint sharesBefore_n2 = user_n2[anyUser];
+
+    exchange(e, i, j, in_amount, min_amount);
+
+    mathint sharesAfter_n1 = user_n1[anyUser];
+    mathint sharesAfter_n2 = user_n2[anyUser];
+
+    assert sharesBefore_n1 == sharesAfter_n1;
+    assert sharesBefore_n2 == sharesAfter_n2;
+
+    // satisfy true;
+}
+
+
+rule integrityOfExchange_balanceMonotonicity(uint256 i, uint256 j, uint256 in_amount, uint256 min_amount) {
+    env e;
+    require (i == 0 && j == 1) || (i == 1 && j == 0);
+
+    mathint borrowedTokenBalanceBefore = stablecoin.balanceOf(e.msg.sender);
+    mathint totalXBefore = total_x * BORROWED_PRECISION();
+
+    // collateraltoken.balanceOf(msg.sender);
+    exchange(e, i, j, in_amount, min_amount);
+    
+    mathint borrowedTokenBalanceAfter = stablecoin.balanceOf(e.msg.sender);
+    mathint totalXAfter = total_x * BORROWED_PRECISION();
+    assert (totalXBefore < totalXAfter) => (borrowedTokenBalanceBefore <= borrowedTokenBalanceAfter);
+    assert (borrowedTokenBalanceBefore < borrowedTokenBalanceAfter) => (totalXBefore <= totalXAfter);
+}
+
+
+/*
+def exchange(i: uint256, j: uint256, in_amount: uint256, min_amount: uint256, _for: address = msg.sender) -> uint256[2]:
+    """
+    @notice Exchanges two coins, callable by anyone
+    @param i Input coin index
+    @param j Output coin index
+    @param in_amount Amount of input coin to swap
+    @param min_amount Minimal amount to get as output
+    @param _for Address to send coins to
+    @return Amount of coins given in/out
+    """
+    return self._exchange(i, j, in_amount, min_amount, _for, True)
+
+
+@external
+@nonreentrant('lock')
+def exchange_dy(i: uint256, j: uint256, out_amount: uint256, max_amount: uint256, _for: address = msg.sender) -> uint256[2]:
+ @notice Exchanges two coins, callable by anyone
+    @param i Input coin index
+    @param j Output coin index
+    @param out_amount Desired amount of output coin to receive
+    @param max_amount Maximum amount to spend (revert if more)
+    @param _for Address to send coins to
+    @return Amount of coins given in/out
+    """
+
+
+Borrowed token changes the same amount as total_x * precision (StableCoin)
+Collateral token changes the same amount as total_y * precision
+
+Rounding needs to be taken into account
+*/

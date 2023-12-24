@@ -8,11 +8,6 @@ from vyper.interfaces import ERC20
 
 implements: ERC20
 
-
-interface ERC1271:
-    def isValidSignature(_hash: bytes32, _signature: Bytes[65]) -> bytes4: view
-
-
 event Approval:
     owner: indexed(address)
     spender: indexed(address)
@@ -25,6 +20,8 @@ event Transfer:
 
 event SetMinter:
     minter: indexed(address)
+interface ERC1271:
+    def isValidSignature(_hash: bytes32, _signature: Bytes[65]) -> bytes4: view
 
 
 decimals: public(constant(uint8)) = 18
@@ -77,22 +74,18 @@ def __init__(_name: String[64], _symbol: String[32]):
     )
 
     self.minter = msg.sender
-    log SetMinter(msg.sender)
 
 
 @internal
 def _approve(_owner: address, _spender: address, _value: uint256):
     self.allowance[_owner][_spender] = _value
 
-    log Approval(_owner, _spender, _value)
 
 
 @internal
 def _burn(_from: address, _value: uint256):
     self.balanceOf[_from] -= _value
     self.totalSupply -= _value
-
-    log Transfer(_from, empty(address), _value)
 
 
 @internal
@@ -101,8 +94,6 @@ def _transfer(_from: address, _to: address, _value: uint256):
 
     self.balanceOf[_from] -= _value
     self.balanceOf[_to] += _value
-
-    log Transfer(_from, _to, _value)
 
 
 @view
