@@ -289,8 +289,8 @@ rule totalSharesToBandsYShouldBeConstantOnWithdraw(address user) {
     mathint newRatio_upper = (total_shares(n) * 10^18) / (bands_y(n) - 1);
     mathint newRatio_lower = (total_shares(n) * 10^18) / (bands_y(n) + 1);
     
-    assert newRatio_lower <= oldRatio;
-    assert oldRatio <= newRatio_upper;
+    assert newRatio_lower <= oldRatio, "ratio decrease bound";
+    assert oldRatio <= newRatio_upper, "ratio increase bound";
     // satisfy true;
 }
 
@@ -317,8 +317,8 @@ rule totalSharesToBandsXShouldBeConstantOnWithdraw(address user) {
     mathint newRatio_upper = (total_shares(n) * 10^18) / (bands_x(n) - 1);
     mathint newRatio_lower = (total_shares(n) * 10^18) / (bands_x(n) + 1);
 
-    assert newRatio_lower <= oldRatio;
-    assert oldRatio <= newRatio_upper;
+    assert newRatio_lower <= oldRatio, "ratio decrease bound";
+    assert oldRatio <= newRatio_upper, "ratio increase bound";
     // satisfy true;
 }
 
@@ -341,8 +341,8 @@ rule totalSharesToBandsYShouldBeConstantOnDepositRange(address user, uint256 amo
     mathint newRatio_upper = (total_shares(n) * 10^18) / (bands_y(n) - 1);
     mathint newRatio_lower = (total_shares(n) * 10^18) / (bands_y(n) + 1);
     
-    assert newRatio_lower <= oldRatio;
-    assert oldRatio <= newRatio_upper;
+    assert newRatio_lower <= oldRatio, "ratio decrease bound";
+    assert oldRatio <= newRatio_upper, "ratio increase bound";
 
     // satisfy true;
 }
@@ -403,12 +403,12 @@ rule integrityOfExchange_balance(uint256 i, uint256 j, uint256 in_amount, uint25
 
     // satisfy userOutCoinBalanceAfter > userOutCoinBalanceBefore;
 
-    assert userInCoinBalanceBefore >= userInCoinBalanceAfter;
-    assert userOutCoinBalanceBefore <= userOutCoinBalanceAfter;
-    assert contractInCoinBalanceBefore <= contractInCoinBalanceAfter;
-    assert contractOutCoinBalanceBefore >= contractOutCoinBalanceAfter;
-    assert userInCoinBalanceBefore - userInCoinBalanceAfter == contractInCoinBalanceAfter - contractInCoinBalanceBefore;
-    assert userOutCoinBalanceAfter - userOutCoinBalanceBefore == contractOutCoinBalanceBefore - contractOutCoinBalanceAfter;
+    assert userInCoinBalanceBefore >= userInCoinBalanceAfter, "user in coin change";
+    assert userOutCoinBalanceBefore <= userOutCoinBalanceAfter, "user out coin change";
+    assert contractInCoinBalanceBefore <= contractInCoinBalanceAfter, "contract in coin change";
+    assert contractOutCoinBalanceBefore >= contractOutCoinBalanceAfter, "contract out coin change";
+    assert userInCoinBalanceBefore - userInCoinBalanceAfter == contractInCoinBalanceAfter - contractInCoinBalanceBefore, "in coin";
+    assert userOutCoinBalanceAfter - userOutCoinBalanceBefore == contractOutCoinBalanceBefore - contractOutCoinBalanceAfter, "out coin";
 }
 
 rule exchangeDoesNotChangeUserShares(uint256 i, uint256 j, uint256 in_amount, uint256 min_amount) {
