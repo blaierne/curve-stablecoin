@@ -116,7 +116,7 @@ struct CallbackData:
     collateral: uint256
 
 
-FACTORY: immutable(Factory)
+FACTORY: public(Factory)
 STABLECOIN: public(ERC20)
 MAX_LOAN_DISCOUNT: constant(uint256) = 5 * 10**17
 MIN_LIQUIDATION_DISCOUNT: constant(uint256) = 10**16 # Start liquidating when threshold reached
@@ -183,7 +183,7 @@ def __init__(
            get_x_down() for "bad liquidation" purposes
     @param amm AMM address (Already deployed from blueprint)
     """
-    FACTORY = Factory(msg.sender)
+    self.FACTORY = Factory(msg.sender)
     stablecoin: ERC20 = ERC20(Factory(msg.sender).stablecoin())
     self.STABLECOIN = stablecoin
     assert stablecoin.decimals() == 18
@@ -234,7 +234,7 @@ def log2(_x: uint256) -> int256:
     if inverse:
         x = 10**36 / x
     t: uint256 = 2**7
-    for i in range(8):
+    for i in range(1):
         p: uint256 = pow_mod256(2, t)
         if x >= unsafe_mul(p, 10**18):
             x = unsafe_div(x, p)
@@ -259,7 +259,7 @@ def factory() -> Factory:
     """
     @notice Address of the factory
     """
-    return FACTORY
+    return self.FACTORY
 
 
 @external
@@ -550,23 +550,23 @@ def execute_callback(callbacker: address, callback_sig: bytes4,
     assert callbacker != self.COLLATERAL_TOKEN.address
 
     data: CallbackData = empty(CallbackData)
-    data.active_band = self.AMM.active_band()
-    band_x: uint256 = self.AMM.bands_x(data.active_band)
-    band_y: uint256 = self.AMM.bands_y(data.active_band)
+    # data.active_band = self.AMM.active_band()
+    # band_x: uint256 = self.AMM.bands_x(data.active_band)
+    # band_y: uint256 = self.AMM.bands_y(data.active_band)
 
-    # Callback
-    response: Bytes[64] = raw_call(
-        callbacker,
-        concat(callback_sig, _abi_encode(user, stablecoins, collateral, debt, callback_args)),
-        max_outsize=64
-    )
-    data.stablecoins = convert(slice(response, 0, 32), uint256)
-    data.collateral = convert(slice(response, 32, 32), uint256)
+    # # Callback
+    # response: Bytes[64] = raw_call(
+    #     callbacker,
+    #     concat(callback_sig, _abi_encode(user, stablecoins, collateral, debt, callback_args)),
+    #     max_outsize=64
+    # )
+    # data.stablecoins = convert(slice(response, 0, 32), uint256)
+    # data.collateral = convert(slice(response, 32, 32), uint256)
 
-    # Checks after callback
-    assert data.active_band == self.AMM.active_band()
-    assert band_x == self.AMM.bands_x(data.active_band)
-    assert band_y == self.AMM.bands_y(data.active_band)
+    # # Checks after callback
+    # assert data.active_band == self.AMM.active_band()
+    # assert band_x == self.AMM.bands_x(data.active_band)
+    # assert band_y == self.AMM.bands_y(data.active_band)
 
     return data
 
@@ -1218,7 +1218,7 @@ def set_amm_fee(fee: uint256):
     @notice Set the AMM fee (factory admin only)
     @param fee The fee which should be no higher than MAX_FEE
     """
-    assert msg.sender == FACTORY.admin()
+    assert msg.sender == self.FACTORY.admin()
     assert fee <= MAX_FEE and fee >= MIN_FEE, "Fee"
     self.AMM.set_fee(fee)
 
@@ -1230,7 +1230,7 @@ def set_amm_admin_fee(fee: uint256):
     @notice Set AMM's admin fee
     @param fee New admin fee (not higher than MAX_ADMIN_FEE)
     """
-    assert msg.sender == FACTORY.admin()
+    assert msg.sender == self.FACTORY.admin()
     assert fee <= MAX_ADMIN_FEE, "High fee"
     self.AMM.set_admin_fee(fee)
 
@@ -1242,7 +1242,7 @@ def set_monetary_policy(monetary_policy: address):
     @notice Set monetary policy contract
     @param monetary_policy Address of the monetary policy contract
     """
-    assert msg.sender == FACTORY.admin()
+    assert msg.sender == self.FACTORY.admin()
     self.monetary_policy = MonetaryPolicy(monetary_policy)
     MonetaryPolicy(monetary_policy).rate_write()
     log SetMonetaryPolicy(monetary_policy)
@@ -1256,7 +1256,7 @@ def set_borrowing_discounts(loan_discount: uint256, liquidation_discount: uint25
     @param loan_discount Discount which defines LTV
     @param liquidation_discount Discount where bad liquidation starts
     """
-    assert msg.sender == FACTORY.admin()
+    assert msg.sender == self.FACTORY.admin()
     assert loan_discount > liquidation_discount
     assert liquidation_discount >= MIN_LIQUIDATION_DISCOUNT
     assert loan_discount <= MAX_LOAN_DISCOUNT
@@ -1271,7 +1271,7 @@ def set_callback(cb: address):
     """
     @notice Set liquidity mining callback
     """
-    assert msg.sender == FACTORY.admin()
+    assert msg.sender == self.FACTORY.admin()
     self.AMM.set_callback(cb)
 
 
@@ -1294,7 +1294,7 @@ def collect_fees() -> uint256:
     """
     @notice Collect the fees charged as interest
     """
-    _to: address = FACTORY.fee_receiver()
+    _to: address = self.FACTORY.fee_receiver()
     # AMM-based fees
     borrowed_fees: uint256 = self.AMM.admin_fees_x()
     collateral_fees: uint256 = self.AMM.admin_fees_y()
@@ -1332,3 +1332,15 @@ def collect_fees() -> uint256:
 @view
 def get_initial_debt(user: address) -> uint256:
     return self.loan[user].initial_debt
+
+@external
+def increase_discount(user: address, amount: uint256):
+    liquidation_discount: uint256 = self.liquidation_discounts[user]
+    new_discount: uint256 = liquidation_discount + amount
+    self.liquidation_discounts[user] = new_discount
+
+@external
+@view
+def get_liquidation_discounts(user: address) -> uint256:
+    return self.liquidation_discounts[user]
+
