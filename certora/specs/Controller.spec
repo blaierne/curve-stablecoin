@@ -110,6 +110,8 @@ methods {
     
     // havocing AMM:
     function _.get_rate_mul() external => CONSTANT;
+
+    function _._calculate_debt_n1(uint256, uint256, uint256) external => NONDET;
 }
 
 ghost address factoryAdmin;

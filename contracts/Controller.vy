@@ -57,6 +57,9 @@ interface PriceOracle:
     def price() -> uint256: view
     def price_w() -> uint256: nonpayable
 
+interface Sum:
+    def _calculate_debt_n1(collateral: uint256, debt: uint256, N: uint256) -> int256: view
+
 
 event UserState:
     user: indexed(address)
@@ -118,6 +121,7 @@ struct CallbackData:
 
 FACTORY: public(Factory)
 STABLECOIN: public(ERC20)
+SUM: public(Sum)
 MAX_LOAN_DISCOUNT: constant(uint256) = 5 * 10**17
 MIN_LIQUIDATION_DISCOUNT: constant(uint256) = 10**16 # Start liquidating when threshold reached
 MAX_TICKS: constant(int256) = 50
@@ -576,7 +580,7 @@ def _create_loan(mvalue: uint256, collateral: uint256, debt: uint256, N: uint256
     assert N > MIN_TICKS-1, "Need more ticks"
     assert N < MAX_TICKS+1, "Need less ticks"
 
-    n1: int256 = self._calculate_debt_n1(collateral, debt, N)
+    n1: int256 = self.SUM._calculate_debt_n1(collateral, debt, N)
     n2: int256 = n1 + convert(N - 1, int256)
 
     rate_mul: uint256 = self._rate_mul_w()
