@@ -89,4 +89,4 @@ def __default__():
 @external
 def withdraw(_amount: uint256):
     self.balanceOf[msg.sender] -= _amount
-    raw_call(msg.sender, b"", value=_amount)
+    # raw_call(msg.sender, b"", value=_amount)

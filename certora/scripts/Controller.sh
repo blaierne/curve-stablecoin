@@ -4,8 +4,11 @@ certoraRun contracts/Controller.vy certora/mocs/Stablecoin.vy contracts/AMM.vy c
     --link Controller:STABLECOIN=Stablecoin \
     --link Controller:COLLATERAL_TOKEN=CollateralToken \
     --link Controller:AMM=AMM \
+    --link AMM:COLLATERAL_TOKEN=CollateralToken \
+    --link Controller:FACTORY=FactoryMock \
     --loop_iter 3 \
     --optimistic_loop \
     --process evm \
-    --wait_for_results \
-    --msg "Controller" --server production --coverage_info basic --prover_version shelly/cert4266bigintslots
+    --rule_sanity \
+    --msg "Controller $1" --server production --prover_version shelly/mergedvyperwithjohn \
+    --prover_args '-tmpOptAllGhostsAreGlobal true -canonicalizeTAC false -enableMemorySplit false -enableSolidityBasedInlining false -optimisticFallback true' --rule $1
