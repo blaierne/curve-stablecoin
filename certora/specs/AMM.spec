@@ -20,7 +20,11 @@ methods {
     // CollateralToken:
     function CollateralToken.balanceOf(address) external returns (uint256) envfree;
     function CollateralToken.totalSupply() external returns (uint256) envfree;
+
+    // 
+    function _.price_w() external => CONSTANT;
 }
+
 
 ghost mapping(address => int256) user_ns {
     init_state axiom (forall address user. user_ns[user] == 0);
@@ -430,6 +434,56 @@ rule exchangeDoesNotChangeUserShares(uint256 i, uint256 j, uint256 in_amount, ui
 
     // satisfy true;
 }
+
+rule integrityOfExchange_bands(uint256 i, uint256 j, uint256 in_amount, uint256 min_amount, address _for) {
+    env e;
+    
+    require (i == 0 && j == 1) || (i == 1 && j == 0);
+
+    require _for != currentContract;
+    require e.msg.sender != currentContract;
+
+    mathint totalXBefore = total_x * BORROWED_PRECISION(); // should correspond to stablecoin
+    mathint totalYBefore = total_y * BORROWED_PRECISION(); // should correspond to collateral token
+
+    mathint stablecoinBalanceBefore = stablecoin.balanceOf(currentContract);
+    mathint collaterlaBalanceBefore = collateraltoken.balanceOf(currentContract);
+
+    exchange(e, i, j, in_amount, min_amount, _for);
+
+    mathint totalXAfter = total_x * BORROWED_PRECISION(); // should correspond to stablecoin
+    mathint totalYAfter = total_y * BORROWED_PRECISION(); // should correspond to collateral token
+
+    mathint stablecoinBalanceAfter = stablecoin.balanceOf(currentContract);
+    mathint collaterlaBalanceAfter = collateraltoken.balanceOf(currentContract);
+
+    assert collaterlaBalanceAfter - collaterlaBalanceBefore == totalXAfter - totalXBefore;
+    assert stablecoinBalanceAfter - stablecoinBalanceBefore == totalYAfter - totalYBefore;
+}
+
+
+
+rule integrityOfExchange_invariant(uint256 i, uint256 j, uint256 in_amount, uint256 min_amount, address _for) {
+    env e;
+    
+    require (i == 0 && j == 1) || (i == 1 && j == 0);
+
+    require _for != currentContract;
+    require e.msg.sender != currentContract;
+
+    mathint ef = A(e);
+
+    assert true;
+}
+
+
+
+
+
+
+
+
+
 
 
 rule integrityOfExchange_balanceMonotonicity(uint256 i, uint256 j, uint256 in_amount, uint256 min_amount) {
