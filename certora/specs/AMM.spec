@@ -21,7 +21,7 @@ methods {
     function CollateralToken.balanceOf(address) external returns (uint256) envfree;
     function CollateralToken.totalSupply() external returns (uint256) envfree;
 
-    // 
+    //
     function _.price_w() external => CONSTANT;
 }
 
@@ -260,7 +260,7 @@ rule deposit_range_requires_sorted_arguments(address user, uint256 amount, int25
             n1: ...
             n2: int256 = n1 + unsafe_sub(ns[1], ns[0])
 
-    
+
     repay_extended(callbacker: address, callback_args: DynArray[uint256,5])
         ns: int256[2] = self.AMM.read_user_tick_numbers(msg.sender)
         if total_stablecoins < debt
@@ -270,6 +270,8 @@ rule deposit_range_requires_sorted_arguments(address user, uint256 amount, int25
     */
 }
 
+
+definition DEAD_SHARES() returns mathint = 1000;
 
 rule totalSharesToBandsYShouldBeConstantOnWithdraw(address user) {
     env e;
@@ -283,16 +285,16 @@ rule totalSharesToBandsYShouldBeConstantOnWithdraw(address user) {
 
     require e.msg.sender == admin();
 
-    mathint oldRatio = (total_shares(n) * 10^18) / bands_y(n);
-    require oldRatio == 10^21;
-    
+    mathint oldRatio = ((total_shares(n) + DEAD_SHARES()) * 10^18) / (bands_y(n) + 1);
+//    require oldRatio == 10^21;
+
     withdraw(e, user, frac);
-    
+
     require bands_y(n) > 1;
 
-    mathint newRatio_upper = (total_shares(n) * 10^18) / (bands_y(n) - 1);
-    mathint newRatio_lower = (total_shares(n) * 10^18) / (bands_y(n) + 1);
-    
+    mathint newRatio_upper = ((total_shares(n) + DEAD_SHARES()) * 10^18) / (bands_y(n) + 0);
+    mathint newRatio_lower = ((total_shares(n) + DEAD_SHARES()) * 10^18) / (bands_y(n) + 2);
+
     assert newRatio_lower <= oldRatio, "ratio decrease bound";
     assert oldRatio <= newRatio_upper, "ratio increase bound";
     // satisfy true;
@@ -312,14 +314,14 @@ rule totalSharesToBandsXShouldBeConstantOnWithdraw(address user) {
 
     require e.msg.sender == admin();
 
-    mathint oldRatio = (total_shares(n) * 10^18) / bands_x(n);
-    require oldRatio == 10^21;
+    mathint oldRatio = ((total_shares(n) + DEAD_SHARES()) * 10^18) / (bands_y(n) + 1);
+ //   require oldRatio == 10^21;
     withdraw(e, user, frac);
-    
+
     require bands_x(n) > 1;
 
-    mathint newRatio_upper = (total_shares(n) * 10^18) / (bands_x(n) - 1);
-    mathint newRatio_lower = (total_shares(n) * 10^18) / (bands_x(n) + 1);
+    mathint newRatio_upper = ((total_shares(n) + DEAD_SHARES()) * 10^18) / (bands_y(n) + 0);
+    mathint newRatio_lower = ((total_shares(n) + DEAD_SHARES()) * 10^18) / (bands_y(n) + 2);
 
     assert newRatio_lower <= oldRatio, "ratio decrease bound";
     assert oldRatio <= newRatio_upper, "ratio increase bound";
@@ -331,37 +333,35 @@ rule totalSharesToBandsYShouldBeConstantOnDepositRange(address user, uint256 amo
 
     int256 n;
 
-    require e.msg.sender == admin() && n1 == n2 && n == n1;
-    require bands_y(n) > 0;
+    //require e.msg.sender == admin() && n1 == n2 && n == n1;
+    //require bands_y(n) > 0;
 
-    mathint oldBands = bands_y(n);
-
-    mathint oldRatio = (total_shares(n) * 10^18) / bands_y(n);
+    mathint oldVirtShares = total_shares(n) + DEAD_SHARES();
+    mathint oldVirtAssets = bands_y(n) + 1;
+//    require oldRatio == 10^21;
 
     deposit_range(e, user, amount, n1, n2);
 
-    require bands_y(n) > 1;
+    mathint newVirtShares = total_shares(n) + DEAD_SHARES();
+    mathint newVirtAssets = bands_y(n) + 1;
 
-    mathint newRatio_upper = (total_shares(n) * 10^18) / (bands_y(n) - 1);
-    mathint newRatio_lower = (total_shares(n) * 10^18) / (bands_y(n) + 1);
-    
-    assert newRatio_lower <= oldRatio, "ratio decrease bound";
-    assert oldRatio <= newRatio_upper, "ratio increase bound";
+    assert newVirtShares * oldVirtAssets <= oldVirtShares * newVirtAssets, "ratio decrease bound";
+    assert (newVirtShares + 1) * oldVirtAssets >= oldVirtShares * newVirtAssets, "ratio increase bound";
 
-    // satisfy true;
+    satisfy n1 == n2 && n == n1;
 }
 
 
 
 
-// Exchange... 
+// Exchange...
 // i = 0, j = 1, stablecoin is going to AMM (in coin), collateral out of AMM (out coin)
 // i = 1, j = 0, collateral is going to AMM, stablecoin out of AMM
 
 // e.msg.sender sends coins, _for gets coins
 rule integrityOfExchange_balance(uint256 i, uint256 j, uint256 in_amount, uint256 min_amount, address _for) {
     env e;
-    
+
     require (i == 0 && j == 1) || (i == 1 && j == 0);
 
     require _for != currentContract;
@@ -403,7 +403,7 @@ rule integrityOfExchange_balance(uint256 i, uint256 j, uint256 in_amount, uint25
         userOutCoinBalanceAfter = stablecoin.balanceOf(_for);
         contractOutCoinBalanceAfter = stablecoin.balanceOf(currentContract);
     }
-    
+
 
     // satisfy userOutCoinBalanceAfter > userOutCoinBalanceBefore;
 
@@ -437,7 +437,7 @@ rule exchangeDoesNotChangeUserShares(uint256 i, uint256 j, uint256 in_amount, ui
 
 rule integrityOfExchange_bands(uint256 i, uint256 j, uint256 in_amount, uint256 min_amount, address _for) {
     env e;
-    
+
     require (i == 0 && j == 1) || (i == 1 && j == 0);
 
     require _for != currentContract;
@@ -465,7 +465,7 @@ rule integrityOfExchange_bands(uint256 i, uint256 j, uint256 in_amount, uint256 
 
 rule integrityOfExchange_invariant(uint256 i, uint256 j, uint256 in_amount, uint256 min_amount, address _for) {
     env e;
-    
+
     require (i == 0 && j == 1) || (i == 1 && j == 0);
 
     require _for != currentContract;
@@ -495,7 +495,7 @@ rule integrityOfExchange_balanceMonotonicity(uint256 i, uint256 j, uint256 in_am
 
     // collateraltoken.balanceOf(msg.sender);
     exchange(e, i, j, in_amount, min_amount);
-    
+
     mathint borrowedTokenBalanceAfter = stablecoin.balanceOf(e.msg.sender);
     mathint totalXAfter = total_x * BORROWED_PRECISION();
     assert (totalXBefore < totalXAfter) => (borrowedTokenBalanceBefore <= borrowedTokenBalanceAfter);
