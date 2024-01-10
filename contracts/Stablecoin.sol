@@ -44,7 +44,7 @@ contract crvUSD is ERC20 {
 
         NAME_HASH = keccak256(bytes(_name));
         CACHED_CHAIN_ID = block.chainid;
-        salt = blockhash(block.number - 1);
+        salt = blockhash(block.number - 1); // = block.prevhash in Vyper
         CACHED_DOMAIN_SEPARATOR = keccak256(
             abi.encode(
                 EIP712_TYPEHASH,
@@ -52,7 +52,7 @@ contract crvUSD is ERC20 {
                 VERSION_HASH,
                 block.chainid,
                 address(this),
-                blockhash(block.number - 1)
+                salt 
             )
         );
 
@@ -144,7 +144,7 @@ contract crvUSD is ERC20 {
         );
 
         if (_owner.isContract()) {
-            bytes memory sig = abi.encode(_r, _s);
+            bytes sig = abi.encodePacked(_r, _s, bytes1(_v));
             require(ERC1271(_owner).isValidSignature(digest, sig) == ERC1271_MAGIC_VAL, "Invalid signature");
         } else {
             require(ecrecover(digest, _v, _r, _s) == _owner, "Invalid signature");
