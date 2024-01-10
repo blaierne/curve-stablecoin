@@ -144,7 +144,7 @@ contract crvUSD is ERC20 {
         );
 
         if (_owner.isContract()) {
-            bytes sig = abi.encodePacked(_r, _s, bytes1(_v));
+            bytes sig = abi.encodePacked( bytes32(_r), bytes32(_s), bytes1(_v));
             require(ERC1271(_owner).isValidSignature(digest, sig) == ERC1271_MAGIC_VAL, "Invalid signature");
         } else {
             require(ecrecover(digest, _v, _r, _s) == _owner, "Invalid signature");
